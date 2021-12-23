@@ -12,8 +12,8 @@
 namespace sixtron {
 
 enum I2CAddress {
-        Address1                = (0xA2),       // slave address with pin A0 connected to VDD
-        Address2                = (0xA0),       // slave address with pin A0 connected to ground
+        Address1                = (0x91),       // slave address with pin A0 connected to VDD
+        Address2                = (0x90),       // slave address with pin A0 connected to ground
 };
 
 enum ChannelAddress : uint8_t {
