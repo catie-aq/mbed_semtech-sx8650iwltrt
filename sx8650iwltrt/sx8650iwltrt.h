@@ -7,6 +7,7 @@
 #define CATIE_SIXTRON_SX8650IWLTRT_H_
 
 #include "mbed.h"
+#include "swo.h"
 
 
 namespace sixtron {
@@ -109,6 +110,12 @@ enum RegChanMskAddress : uint8_t {
         CONV_AUX                = (0x08),       // 0: no sample 1: sample, report AUX channel
 };
 
+typedef struct {
+        char xpos;
+        char ypos;
+        char chan;
+}POSITION;  
+
 class SX8650IWLTRT
 {
 public:
@@ -131,12 +138,6 @@ public:
      */
     void set_mode(Mode mode);
 
-   /*! Get the SX8650IWLTRT mode
-     *
-     * \return mode Mode set on the component
-     */
-    Mode mode();
-
     /** Attach a callback to interrupt
      *
      * Callback is executed in interrupt modes (\p InterruptReadOutMode and \p
@@ -146,8 +147,61 @@ public:
      */
     void attach(Callback<void()> function);
 
+    /*! Set the SX8650IWLTRT RegCtrl0 rate config
+     *
+     * \param value Rate Address to be applied
+     */
+    void set_rate(Rate value);
 
-//private:
+     /*! Get the SX8650IWLTRT RegCtrl0 rate config
+     *
+     * \returns rate Rate Address to be applied
+     */
+    Rate rate();
+
+    /*! Set the SX8650IWLTRT RegCtrl1 condirq config
+     *
+     * \param value RegCtrl1Address Address to be applied
+     */
+    void set_condirq(RegCtrl1Address value);
+
+    /*! Get the SX8650IWLTRT RegCtrl1 condirq config
+     *
+     * \return condirq
+     */
+    RegCtrl1Address condirq();
+
+    /*! Set the SX8650IWLTRT RegCtrl0 time of powdly config
+     *
+     * \param value Powdly Address to be applied
+     */
+    void set_powdly(Time value);
+
+     /*! Get the SX8650IWLTRT RegCtrl0 time of powdly config
+     *
+     * \returns powdly
+     * 
+     */
+    Time powdly();
+
+    uint16_t read_channel();
+
+    uint16_t read_channel_data();
+
+    
+private:
+
+    /*! Select the SX8650IWLTRT channel
+     *
+     * \param value Channel Address to be applied
+     */
+    void select_channel(ChannelAddress value);
+
+    /*! Convert the SX8650IWLTRT channel
+     *
+     * \param value Channel Address to be applied
+     */
+    void convert_channel(ChannelAddress value);
 
     /*! Set register value
      *
@@ -170,8 +224,6 @@ public:
      */
     int i2c_read_register(RegisterAddress registerAddress,char *value);
 
-// Command Register
-    
     /*! Set command register value
      *
      *\param writecommand register address 
@@ -189,44 +241,11 @@ public:
      * \returns 0 on success,
      *          no-0 on failure
      */
-    int i2c_read_channel(ChannelAddress chan,char *value);
+    int i2c_read_channel(uint16_t *value_channel,uint16_t *channel_name);
 
-    /*! Select the SX8650IWLTRT channel
-     *
-     * \param value Channel Address to be applied
-     */
-    void select_channel(ChannelAddress value);
 
-    /*! Convert the SX8650IWLTRT channel
-     *
-     * \param value Channel Address to be applied
-     */
-    void convert_channel(ChannelAddress value);
 
-    /*! Set the SX8650IWLTRT RegCtrl0 time of powdly config
-     *
-     * \param value Powdly Address to be applied
-     */
-    void set_powdly(Time value);
 
-     /*! Get the SX8650IWLTRT RegCtrl0 time of powdly config
-     *
-     * \returns powdly
-     * 
-     */
-    Time powdly();
-
-    /*! Set the SX8650IWLTRT RegCtrl0 rate config
-     *
-     * \param value Rate Address to be applied
-     */
-    void set_rate(Rate value);
-
-     /*! Get the SX8650IWLTRT RegCtrl0 rate config
-     *
-     * \param rate Rate Address to be applied
-     */
-    Rate rate();
 
     /*! Set the SX8650IWLTRT RegCtrl1 auxaqc config
      *
@@ -240,17 +259,7 @@ public:
      */
     RegCtrl1Address auxaqc();
 
-    /*! Set the SX8650IWLTRT RegCtrl1 condirq config
-     *
-     * \param value RegCtrl1Address Address to be applied
-     */
-    void set_condirq(RegCtrl1Address value);
 
-    /*! Get the SX8650IWLTRT RegCtrl1 condirq config
-     *
-     * \return condirq
-     */
-    RegCtrl1Address condirq();
 
      /*! Set the SX8650IWLTRT RegCtrl1 pen resistor config
      *
@@ -264,7 +273,6 @@ public:
      */
     PenResistor pen_resistor();
 
-    
      /*! Set the SX8650IWLTRT RegCtrl1 filt config
      *
      * \param value RegCtrl1Address Address to be applied
@@ -301,14 +309,11 @@ public:
      */
     RegChanMskAddress reg_chan_msk();
 
-private:
-
     I2C _i2c;
     I2CAddress _i2cAddress;
     Callback<void()> _user_callback;
     EventQueue _event_queue;
     Thread _thread;
-
 };
 
 
