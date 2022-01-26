@@ -7,7 +7,6 @@
 #define CATIE_SIXTRON_SX8650IWLTRT_H_
 
 #include "mbed.h"
-#include "swo.h"
 
 
 namespace sixtron {
@@ -87,7 +86,7 @@ enum Time : uint8_t {
 };
 enum RegCtrl1Address : uint8_t {
         /* sx8650 bits for RegCtrl1 */
-        CONDIRQ                 = (0x20),       // enabke conditional interrupts
+        CONDIRQ                 = (0x20),       // enable conditional interrupts
         FILT_NONE               = (0x00),       // no averaging 
         FILT_3SA                = (0x01),       // 3 sample averaging 
         FILT_5SA                = (0x02),       // 5 sample averaging 
@@ -102,19 +101,13 @@ enum PenResistor : uint8_t {
         RPDNT_25_KOHM           = (0x0C),            
 };
 enum RegChanMskAddress : uint8_t {
-        /* sx8650 bits for register 2, I2CRegChanMsk */
+        /* sx8650 bits for register , I2CRegChanMsk */
         CONV_X                  = (0x80),       // 0: no sample 1: sample, report X channel
         CONV_Y                  = (0x40),       // 0: no sample 1: sample, report Y channel
         CONV_Z1                 = (0x20),       // 0: no sample 1: sample, report Z1 channel
         CONV_Z2                 = (0x10),       // 0: no sample 1: sample, report Z2 channel
         CONV_AUX                = (0x08),       // 0: no sample 1: sample, report AUX channel
 };
-
-typedef struct {
-        char xpos;
-        char ypos;
-        char chan;
-}POSITION;  
 
 class SX8650IWLTRT
 {
@@ -147,17 +140,8 @@ public:
      */
     void attach(Callback<void()> function);
 
-    /*! Set the SX8650IWLTRT RegCtrl0 rate config
-     *
-     * \param value Rate Address to be applied
-     */
-    void set_rate(Rate value);
-
-     /*! Get the SX8650IWLTRT RegCtrl0 rate config
-     *
-     * \returns rate Rate Address to be applied
-     */
-    Rate rate();
+    uint16_t read_channel();
+    uint16_t read_channel_data();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -169,39 +153,33 @@ public:
      *
      * \return condirq
      */
-    RegCtrl1Address condirq();
+    RegCtrl1Address condirq();  
 
-    /*! Set the SX8650IWLTRT RegCtrl0 time of powdly config
+     /*! Set the SX8650IWLTRT RegCtrl0 rate config
      *
-     * \param value Powdly Address to be applied
+     * \param value Rate Address to be applied
      */
-    void set_powdly(Time value);
+    void set_rate(Rate value);
 
-     /*! Get the SX8650IWLTRT RegCtrl0 time of powdly config
+     /*! Get the SX8650IWLTRT RegCtrl0 rate config
      *
-     * \returns powdly
-     * 
+     * \return rate Rate 
      */
-    Time powdly();
+    Rate rate();
 
-    uint16_t read_channel();
+     /*! Get the SX8650IWLTRT RegCtrl0 rate config
+     *
+     * \return convirq status
+     */
+    uint8_t convirq();
 
-    uint16_t read_channel_data();
+    /*! Get the SX8650IWLTRT RegCtrl0 rate config
+     *
+     * \return penirq status
+     */
+    uint8_t penirq();
 
-    
 private:
-
-    /*! Select the SX8650IWLTRT channel
-     *
-     * \param value Channel Address to be applied
-     */
-    void select_channel(ChannelAddress value);
-
-    /*! Convert the SX8650IWLTRT channel
-     *
-     * \param value Channel Address to be applied
-     */
-    void convert_channel(ChannelAddress value);
 
     /*! Set register value
      *
@@ -223,7 +201,7 @@ private:
      *          no-0 on failure
      */
     int i2c_read_register(RegisterAddress registerAddress,char *value);
-
+    
     /*! Set command register value
      *
      *\param writecommand register address 
@@ -235,17 +213,38 @@ private:
     
     /*! Get channel value
      *
-     *\param channel channel address
-     * \param value to store write value
+     *\param value_channel channel address
+     * \param channel_name to store write value
      *
      * \returns 0 on success,
      *          no-0 on failure
      */
     int i2c_read_channel(uint16_t *value_channel,uint16_t *channel_name);
 
+    /*! Select the SX8650IWLTRT channel
+     *
+     * \param value Channel Address to be applied
+     */
+    void select_channel(ChannelAddress value);
 
+    /*! Convert the SX8650IWLTRT channel
+     *
+     * \param value Channel Address to be applied
+     */
+    void convert_channel(ChannelAddress value);
 
+    /*! Set the SX8650IWLTRT RegCtrl0 time of powdly config
+     *
+     * \param value Powdly Address to be applied
+     */
+    void set_powdly(Time value);
 
+     /*! Get the SX8650IWLTRT RegCtrl0 time of powdly config
+     *
+     * \returns powdly
+     * 
+     */
+    Time powdly();
 
     /*! Set the SX8650IWLTRT RegCtrl1 auxaqc config
      *
@@ -259,8 +258,6 @@ private:
      */
     RegCtrl1Address auxaqc();
 
-
-
      /*! Set the SX8650IWLTRT RegCtrl1 pen resistor config
      *
      * \param value PenResistor Address to be applied
@@ -273,6 +270,7 @@ private:
      */
     PenResistor pen_resistor();
 
+    
      /*! Set the SX8650IWLTRT RegCtrl1 filt config
      *
      * \param value RegCtrl1Address Address to be applied
@@ -314,6 +312,7 @@ private:
     Callback<void()> _user_callback;
     EventQueue _event_queue;
     Thread _thread;
+
 };
 
 
