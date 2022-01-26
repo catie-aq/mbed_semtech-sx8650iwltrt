@@ -139,8 +139,8 @@ namespace sixtron {
     }
 
     int SX8650IWLTRT::i2c_read_channel(uint16_t *value_channel,uint16_t *channel_name){
-        char data[2];
-        if (_i2c.read(static_cast<int>(_i2cAddress), data, 2) != 0) {
+        char data[4];
+        if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
         // printf("data 0 %u\n\n",data[0]);
