@@ -48,19 +48,19 @@ namespace sixtron {
         _user_callback = function;
     }    
 
-    uint16_t SX8650IWLTRT::read_channel(){
-        uint16_t channel_selected;
-        uint16_t data;
-        i2c_read_channel(&data,&channel_selected);
-        return channel_selected;
+    uint16_t SX8650IWLTRT::read_channel_y(){
+        uint16_t channel_x;
+        uint16_t channel_y;
+        i2c_read_channel(&channel_x,&channel_y);
+        return channel_y;
 
     }
 
-    uint16_t SX8650IWLTRT::read_channel_data(){
-        uint16_t channel_selected;
-        uint16_t data;
-        i2c_read_channel(&data,&channel_selected);
-        return data;
+    uint16_t SX8650IWLTRT::read_channel_x(){
+        uint16_t channel_x;
+        uint16_t channel_y;
+        i2c_read_channel(&channel_x,&channel_y);
+        return channel_x;
 
     }
 
@@ -138,15 +138,13 @@ namespace sixtron {
         return 0;
     }
 
-    int SX8650IWLTRT::i2c_read_channel(uint16_t *value_channel,uint16_t *channel_name){
+    int SX8650IWLTRT::i2c_read_channel(uint16_t *channel_x,uint16_t *channel_y){
         char data[4];
         if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
-        // printf("data 0 %u\n\n",data[0]);
-        // printf("data 1 %u\n\n",data[1]);
-        *channel_name = (data[0] & 0x70)>>4; 
-        *value_channel = (data[0] & 0x0F)<<8 | data[1];
+        *channel_x = (data[0] & 0x0F)<<8 | data[1];
+        *channel_y = (data[2] & 0x0F)<<8 | data[3];
         return 0;
     }
 

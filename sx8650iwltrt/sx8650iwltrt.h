@@ -140,8 +140,8 @@ public:
      */
     void attach(Callback<void()> function);
 
-    uint16_t read_channel();
-    uint16_t read_channel_data();
+    uint16_t read_channel_y();
+    uint16_t read_channel_x();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -213,13 +213,13 @@ private:
     
     /*! Get channel value
      *
-     *\param value_channel channel address
-     * \param channel_name to store write value
+     *\param channel_x channel address
+     * \param channel_y to store write value
      *
      * \returns 0 on success,
      *          no-0 on failure
      */
-    int i2c_read_channel(uint16_t *value_channel,uint16_t *channel_name);
+    int i2c_read_channel(uint16_t *channel_x,uint16_t *channel_y);
 
     /*! Select the SX8650IWLTRT channel
      *
