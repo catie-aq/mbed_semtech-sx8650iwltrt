@@ -18,6 +18,8 @@
 
 namespace sixtron {
 
+    
+
     SX8650IWLTRT::SX8650IWLTRT(PinName i2c_sda, PinName i2c_sdl ,I2CAddress i2cAddress):
     _i2c(i2c_sda,i2c_sdl),
     _i2cAddress(i2cAddress),
@@ -26,8 +28,7 @@ namespace sixtron {
     _thread()
 
     {
-            
-        
+         
         _thread.start(callback(&_event_queue, &EventQueue::dispatch_forever));
     }
 
@@ -41,25 +42,74 @@ namespace sixtron {
         i2c_write_command(static_cast<char>(mode));
     }
 
-    Mode SX8650IWLTRT::mode(){
-        return Mode::ManAuto;
-    }
 
     void SX8650IWLTRT::attach(Callback<void()> function)
     {
         _user_callback = function;
+    }    
+
+    // uint16_t SX8650IWLTRT::read_channel_y(){
+        
+    //     uint16_t channel_x;
+    //     uint16_t channel_y;
+    //     i2c_read_channel(&channel_x,&channel_y);
+    //     return channel_y;
+
+    // }
+
+    // uint16_t SX8650IWLTRT::read_channel_x(){
+    //     uint16_t channel_x;
+    //     uint16_t channel_y;
+    //     i2c_read_channel(&channel_x,&channel_y);
+    //     return channel_x;
+
+    // }
+
+    void SX8650IWLTRT::read_channel(){
+        i2c_read_channel();
     }
 
-    
+    void SX8650IWLTRT::set_rate(Rate value){
+        i2c_set_register(RegisterAddress::I2CRegCtrl0,static_cast<char>(value));
+    }
+
+    Rate SX8650IWLTRT::rate(){
+        char data;
+        i2c_read_register(RegisterAddress::I2CRegCtrl0,&data);
+        return static_cast<Rate>(data);
+    }
+
+    void SX8650IWLTRT::set_condirq(RegCtrl1Address value){
+        i2c_set_register(RegisterAddress::I2CRegCtrl1,static_cast<char>(value));
+    }
+
+    RegCtrl1Address SX8650IWLTRT::condirq(){
+        char data;
+        i2c_read_register(RegisterAddress::I2CRegCtrl1,&data);
+        return static_cast<RegCtrl1Address>(data);
+    }
+
+    uint8_t SX8650IWLTRT::convirq(){
+        char data;
+        i2c_read_register(RegisterAddress::I2CRegStat,&data);
+        return static_cast<uint8_t>(data>>7);
+    }
+
+    uint8_t SX8650IWLTRT::penirq(){
+        char data;
+        i2c_read_register(RegisterAddress::I2CRegStat,&data);
+        return static_cast<uint8_t>(data>>6);
+    }
+
 /* PRIVATE */
 
     void SX8650IWLTRT::select_channel(ChannelAddress value){
-        char tmp = static_cast<char>(SX8650_SELECT_CH) + static_cast<char>(value);
+        char tmp = static_cast<char>(SX8650_SELECT_CH | value);
         i2c_write_command(tmp);
     }
 
     void SX8650IWLTRT::convert_channel(ChannelAddress value){
-        char tmp = static_cast<char>(SX8650_CONVERT_CH) + static_cast<char>(value);
+        char tmp = static_cast<char>(SX8650_CONVERT_CH | value);
         i2c_write_command(tmp);
     }
 
@@ -85,28 +135,26 @@ namespace sixtron {
     }
 
     int SX8650IWLTRT::i2c_write_command(char writecommand){
-        char data[1];
-        data[0] = writecommand;
+        char data = static_cast<char>(writecommand);
 
-        if (_i2c.write(static_cast<int>(_i2cAddress), data, 1) != 0) {
+        if (_i2c.write(static_cast<int>(_i2cAddress), &data, 1) != 0) {
             return -1;
         }
         return 0;
     }
 
-    int SX8650IWLTRT::i2c_read_channel(ChannelAddress chan,char *value){
-        static char data[2];
-        data[0] = static_cast<char>(chan);
-        if (_i2c.write(static_cast<int>(_i2cAddress), data, 1, true) != 0) {
-            return -1;
-        }
-        if (_i2c.read(static_cast<int>(_i2cAddress), data, 2) != 0) {
+    int SX8650IWLTRT::i2c_read_channel(/*uint16_t *channel_x,uint16_t *channel_y*/){
+        char data[4];
+        if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
-        *value = (data[1] << 8) | (0xFF & data[0]);
+        // *channel_x = (data[0] & 0x0F)<<8 | data[1];
+        // *channel_y = (data[2] & 0x0F)<<8 | data[3];
+        coordinates.x = (data[0] & 0x0F)<<8 | data[1];
+        coordinates.y = (data[2] & 0x0F)<<8 | data[3];
         return 0;
     }
-   
+
     void SX8650IWLTRT::set_powdly(Time value){
         i2c_set_register(RegisterAddress::I2CRegCtrl0,static_cast<char>(value));
     }
@@ -117,31 +165,11 @@ namespace sixtron {
         return static_cast<Time>(data);
     }
 
-    void SX8650IWLTRT::set_rate(Rate value){
-        i2c_set_register(RegisterAddress::I2CRegCtrl0,static_cast<char>(value));
-    }
-
-    Rate SX8650IWLTRT::rate(){
-        char data;
-        i2c_read_register(RegisterAddress::I2CRegCtrl0,&data);
-        return static_cast<Rate>(data);
-    }
-
     void SX8650IWLTRT::set_auxaqc(RegCtrl1Address value){
         i2c_set_register(RegisterAddress::I2CRegCtrl1,static_cast<char>(value));
     }
 
     RegCtrl1Address SX8650IWLTRT::auxaqc(){
-        char data;
-        i2c_read_register(RegisterAddress::I2CRegCtrl1,&data);
-        return static_cast<RegCtrl1Address>(data);
-    }
-
-    void SX8650IWLTRT::set_condirq(RegCtrl1Address value){
-        i2c_set_register(RegisterAddress::I2CRegCtrl1,static_cast<char>(value));
-    }
-
-    RegCtrl1Address SX8650IWLTRT::condirq(){
         char data;
         i2c_read_register(RegisterAddress::I2CRegCtrl1,&data);
         return static_cast<RegCtrl1Address>(data);
