@@ -18,6 +18,7 @@
 
 namespace sixtron {
 
+    
 
     SX8650IWLTRT::SX8650IWLTRT(PinName i2c_sda, PinName i2c_sdl ,I2CAddress i2cAddress):
     _i2c(i2c_sda,i2c_sdl),
@@ -27,8 +28,7 @@ namespace sixtron {
     _thread()
 
     {
-            
-        
+         
         _thread.start(callback(&_event_queue, &EventQueue::dispatch_forever));
     }
 
@@ -48,20 +48,25 @@ namespace sixtron {
         _user_callback = function;
     }    
 
-    uint16_t SX8650IWLTRT::read_channel_y(){
-        uint16_t channel_x;
-        uint16_t channel_y;
-        i2c_read_channel(&channel_x,&channel_y);
-        return channel_y;
+    // uint16_t SX8650IWLTRT::read_channel_y(){
+        
+    //     uint16_t channel_x;
+    //     uint16_t channel_y;
+    //     i2c_read_channel(&channel_x,&channel_y);
+    //     return channel_y;
 
-    }
+    // }
 
-    uint16_t SX8650IWLTRT::read_channel_x(){
-        uint16_t channel_x;
-        uint16_t channel_y;
-        i2c_read_channel(&channel_x,&channel_y);
-        return channel_x;
+    // uint16_t SX8650IWLTRT::read_channel_x(){
+    //     uint16_t channel_x;
+    //     uint16_t channel_y;
+    //     i2c_read_channel(&channel_x,&channel_y);
+    //     return channel_x;
 
+    // }
+
+    void SX8650IWLTRT::read_channel(){
+        i2c_read_channel();
     }
 
     void SX8650IWLTRT::set_rate(Rate value){
@@ -138,13 +143,15 @@ namespace sixtron {
         return 0;
     }
 
-    int SX8650IWLTRT::i2c_read_channel(uint16_t *channel_x,uint16_t *channel_y){
+    int SX8650IWLTRT::i2c_read_channel(/*uint16_t *channel_x,uint16_t *channel_y*/){
         char data[4];
         if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
-        *channel_x = (data[0] & 0x0F)<<8 | data[1];
-        *channel_y = (data[2] & 0x0F)<<8 | data[3];
+        // *channel_x = (data[0] & 0x0F)<<8 | data[1];
+        // *channel_y = (data[2] & 0x0F)<<8 | data[3];
+        coordinates.x = (data[0] & 0x0F)<<8 | data[1];
+        coordinates.y = (data[2] & 0x0F)<<8 | data[3];
         return 0;
     }
 

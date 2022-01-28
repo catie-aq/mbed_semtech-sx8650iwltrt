@@ -11,6 +11,11 @@
 
 namespace sixtron {
 
+struct COORDINATES {
+        uint16_t x = 1;
+        uint16_t y = 2;
+};
+
 enum I2CAddress {
         Address1                = (0x91),       // slave address with pin A0 connected to VDD
         Address2                = (0x90),       // slave address with pin A0 connected to ground
@@ -113,6 +118,7 @@ class SX8650IWLTRT
 {
 public:
     
+     volatile struct COORDINATES coordinates;
     
        /*! Constructor
      *
@@ -140,8 +146,9 @@ public:
      */
     void attach(Callback<void()> function);
 
-    uint16_t read_channel_y();
-    uint16_t read_channel_x();
+//     uint16_t read_channel_y();
+//     uint16_t read_channel_x();
+    void read_channel();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -219,7 +226,7 @@ private:
      * \returns 0 on success,
      *          no-0 on failure
      */
-    int i2c_read_channel(uint16_t *channel_x,uint16_t *channel_y);
+    int i2c_read_channel(/*uint16_t *channel_x,uint16_t *channel_y*/);
 
     /*! Select the SX8650IWLTRT channel
      *
@@ -312,6 +319,7 @@ private:
     Callback<void()> _user_callback;
     EventQueue _event_queue;
     Thread _thread;
+   
 
 };
 
