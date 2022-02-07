@@ -146,8 +146,6 @@ public:
      */
     void attach(Callback<void()> function);
 
-//     uint16_t read_channel_y();
-//     uint16_t read_channel_x();
     void read_channel();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
@@ -226,7 +224,7 @@ private:
      * \returns 0 on success,
      *          no-0 on failure
      */
-    int i2c_read_channel(/*uint16_t *channel_x,uint16_t *channel_y*/);
+    int i2c_read_channel());
 
     /*! Select the SX8650IWLTRT channel
      *

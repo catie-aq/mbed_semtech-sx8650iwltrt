@@ -48,23 +48,6 @@ namespace sixtron {
         _user_callback = function;
     }    
 
-    // uint16_t SX8650IWLTRT::read_channel_y(){
-        
-    //     uint16_t channel_x;
-    //     uint16_t channel_y;
-    //     i2c_read_channel(&channel_x,&channel_y);
-    //     return channel_y;
-
-    // }
-
-    // uint16_t SX8650IWLTRT::read_channel_x(){
-    //     uint16_t channel_x;
-    //     uint16_t channel_y;
-    //     i2c_read_channel(&channel_x,&channel_y);
-    //     return channel_x;
-
-    // }
-
     void SX8650IWLTRT::read_channel(){
         i2c_read_channel();
     }
@@ -99,6 +82,10 @@ namespace sixtron {
         char data;
         i2c_read_register(RegisterAddress::I2CRegStat,&data);
         return static_cast<uint8_t>(data>>6);
+    }
+
+    void SX8650IWLTRT::calibration(){
+        
     }
 
 /* PRIVATE */
@@ -143,13 +130,11 @@ namespace sixtron {
         return 0;
     }
 
-    int SX8650IWLTRT::i2c_read_channel(/*uint16_t *channel_x,uint16_t *channel_y*/){
+    int SX8650IWLTRT::i2c_read_channel(){
         char data[4];
         if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
-        // *channel_x = (data[0] & 0x0F)<<8 | data[1];
-        // *channel_y = (data[2] & 0x0F)<<8 | data[3];
         coordinates.x = (data[0] & 0x0F)<<8 | data[1];
         coordinates.y = (data[2] & 0x0F)<<8 | data[3];
         return 0;
