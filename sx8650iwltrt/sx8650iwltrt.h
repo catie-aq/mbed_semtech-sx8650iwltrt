@@ -184,6 +184,8 @@ public:
      */
     uint8_t penirq();
 
+    void calibration();
+
 private:
 
     /*! Set register value
@@ -224,7 +226,7 @@ private:
      * \returns 0 on success,
      *          no-0 on failure
      */
-    int i2c_read_channel());
+    int i2c_read_channel();
 
     /*! Select the SX8650IWLTRT channel
      *

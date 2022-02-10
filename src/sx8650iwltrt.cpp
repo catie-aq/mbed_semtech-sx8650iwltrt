@@ -135,8 +135,8 @@ namespace sixtron {
         if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
-        coordinates.x = (data[0] & 0x0F)<<8 | data[1];
-        coordinates.y = (data[2] & 0x0F)<<8 | data[3];
+        coordinates.x = ((data[0] & 0x0F)<<8 | data[1])*128/(4095-250);
+        coordinates.y = ((data[2] & 0x0F)<<8 | data[3])*160/(4095-250);
         return 0;
     }
 
