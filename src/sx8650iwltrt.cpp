@@ -4,6 +4,8 @@
  */
 
 #include "sx8650iwltrt.h"
+#include "lvgl.h"
+// #include "touch_tft.h"
 
 /* sx8650 commands */
 #define SX8650_SELECT_CH        0x80    // Select Channel Register : Select and bias a channel
@@ -14,18 +16,24 @@
 #define STATUS_CONVIRQ          0x80	// I2C_REG_STAT: end of conversion flag
 #define STATUS_PENIRQ           0x40	// I2C_REG_STAT: pen detected
 
+/* Screen size */
+#define SCREEN_HEIGHT   160 
+#define SCREEN_WIDTH    128
 
 
 namespace sixtron {
 
     
 
-    SX8650IWLTRT::SX8650IWLTRT(PinName i2c_sda, PinName i2c_sdl ,I2CAddress i2cAddress):
+    SX8650IWLTRT::SX8650IWLTRT(PinName i2c_sda, PinName i2c_sdl ,
+    PinName spi_mosi,PinName spi_miso ,PinName spi_sck ,I2CAddress i2cAddress):
     _i2c(i2c_sda,i2c_sdl),
+    _spi(spi_mosi,spi_miso,spi_sck),
     _i2cAddress(i2cAddress),
     _user_callback(nullptr),
     _event_queue(),
     _thread()
+    
 
     {
          
@@ -84,9 +92,51 @@ namespace sixtron {
         return static_cast<uint8_t>(data>>6);
     }
 
-    void SX8650IWLTRT::calibration(){
-        
+    
+    void SX8650IWLTRT::calibrate(Callback<uint8_t()> func){
+        bool calibration_check(false);
+        uint16_t pointcheck[6] = {10,10,64,80,118,150};
+        // draw_cross(10,10);
+        while(!calibration_check)
+        {
+            for(int i = 0;i<5;i=i+2)
+            {
+                if((coordinates.x-8 > pointcheck[i] || pointcheck[i] > coordinates.x+8) 
+                && (coordinates.y-11 > pointcheck[i+1] || pointcheck[i+1] > coordinates.y+11))
+                {
+                    printf("P%d validated\n\n Touch the next cross\n\n",i);
+                }
+            }
+        }
+        printf("Calibration done!\n\n");
     }
+
+    void SX8650IWLTRT::draw_cross(uint8_t x, uint8_t y)
+    {
+        static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(SCREEN_WIDTH, SCREEN_HEIGHT)];
+        lv_obj_t *canvas = lv_canvas_create(lv_scr_act());
+        lv_canvas_set_buffer(canvas, cbuf, SCREEN_WIDTH, SCREEN_HEIGHT, LV_IMG_CF_TRUE_COLOR);
+
+        uint8_t w = 20;
+        uint8_t h = 20;
+        const lv_point_t vertical[] = {{x, y - h / 2}, {x, y + h / 2}};
+        const lv_point_t vertical[] = {{x, y - h / 2}, {x, y + h / 2}};
+        lv_draw_line_dsc_t line;
+        lv_draw_line_dsc_init(&line);
+        line.color = LV_COLOR_MAKE(255, 255, 255);
+        line.width = 1;
+
+        lv_canvas_draw_line(canvas, vertical, 2, &line);
+
+        const lv_point_t horizontal[] = {{x - w / 2, y}, {x + w / 2, y}};
+
+        lv_canvas_draw_line(canvas, horizontal, 2, &line);
+    }
+
+    void SX8650IWLTRT::set_calibration(uint8_t a ,uint8_t b ,uint8_t c){
+       
+    }
+
 
 /* PRIVATE */
 

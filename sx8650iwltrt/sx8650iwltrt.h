@@ -7,14 +7,24 @@
 #define CATIE_SIXTRON_SX8650IWLTRT_H_
 
 #include "mbed.h"
+#include "lvgl.h"
+#include "ili9163c.h"
 
 
 namespace sixtron {
 
 struct COORDINATES {
-        uint16_t x = 1;
+        uint16_t x = 2;
         uint16_t y = 2;
 };
+
+struct COEFFICIENT {
+        uint16_t a;
+        uint16_t b;
+        uint16_t c;
+        uint16_t d;
+};
+
 
 enum I2CAddress {
         Address1                = (0x91),       // slave address with pin A0 connected to VDD
@@ -119,13 +129,16 @@ class SX8650IWLTRT
 public:
     
      volatile struct COORDINATES coordinates;
-    
+     volatile struct COEFFICIENT coefficient;
        /*! Constructor
      *
      *  \param sda I2C data line pin
      *  \param scl I2C clock line pin
+     *  \param mosi SPI data input from master pin
+     *  \param miso SPI data output from slave pin
+     *  \param sck SPI serial clock line pin
      */
-    SX8650IWLTRT(PinName i2c_sda, PinName i2c_scl, I2CAddress i2cAddress = I2CAddress::Address2 );
+    SX8650IWLTRT(PinName i2c_sda, PinName i2c_scl,PinName spi_mosi,PinName spi_miso ,PinName spi_sck,I2CAddress i2cAddress = I2CAddress::Address2 );
 
     /*! SX8650IWLTRT software reset
      */
@@ -184,7 +197,11 @@ public:
      */
     uint8_t penirq();
 
-    void calibration();
+    void calibrate(Callback<uint8_t()> func);
+
+    void draw_cross(uint8_t  x, uint8_t y);
+
+    void set_calibration(uint8_t a ,uint8_t b ,uint8_t c);    
 
 private:
 
@@ -220,7 +237,7 @@ private:
     
     /*! Get channel value
      *
-     *\param channel_x channel address
+     * \param channel_x channel address
      * \param channel_y to store write value
      *
      * \returns 0 on success,
@@ -315,6 +332,7 @@ private:
     RegChanMskAddress reg_chan_msk();
 
     I2C _i2c;
+    SPI _spi;
     I2CAddress _i2cAddress;
     Callback<void()> _user_callback;
     EventQueue _event_queue;
