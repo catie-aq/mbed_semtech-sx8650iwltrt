@@ -32,11 +32,12 @@ namespace sixtron {
     _i2cAddress(i2cAddress),
     _user_callback(nullptr),
     _event_queue(),
-    _thread()
-    
+    _thread(),
+    _nirq(DIO5)
 
     {
-         
+
+        touch = false;
         _thread.start(callback(&_event_queue, &EventQueue::dispatch_forever));
     }
 
@@ -89,51 +90,92 @@ namespace sixtron {
     uint8_t SX8650IWLTRT::penirq(){
         char data;
         i2c_read_register(RegisterAddress::I2CRegStat,&data);
-        return static_cast<uint8_t>(data>>6);
+        return static_cast<uint8_t>(data>>6)&&(0x01);
     }
 
-    
-    void SX8650IWLTRT::calibrate(Callback<uint8_t()> func){
-        bool calibration_check(false);
-        uint16_t pointcheck[6] = {10,10,64,80,118,150};
-        // draw_cross(10,10);
-        while(!calibration_check)
-        {
-            for(int i = 0;i<5;i=i+2)
-            {
-                if((coordinates.x-8 > pointcheck[i] || pointcheck[i] > coordinates.x+8) 
-                && (coordinates.y-11 > pointcheck[i+1] || pointcheck[i+1] > coordinates.y+11))
-                {
-                    printf("P%d validated\n\n Touch the next cross\n\n",i);
-                }
-            }
+    void SX8650IWLTRT::get_touch(){
+        touch = true;
+    }
+
+    void SX8650IWLTRT::no_touch(){
+        touch = false;
+    }
+
+    void SX8650IWLTRT::calibrate(Callback<void(int,int)> func){
+        
+        int i = 0;
+        uint8_t a = 0 , b = 0 , c = 0 , d = 0 ;
+        uint16_t pointcheck[6] = {10, 10, SCREEN_WIDTH/2, SCREEN_HEIGHT/2, SCREEN_WIDTH - 10, SCREEN_HEIGHT -10};
+        POINT p;
+        set_filt(FILT_5SA);
+        set_mode(PenDet);
+        
+        //Wait for touch
+        printf("Touch the screen to calibrate \n\n");
+        _nirq.fall(callback(this,&SX8650IWLTRT::get_touch));
+        _nirq.rise(callback(this,&SX8650IWLTRT::no_touch));
+        while(!touch){
+            ThisThread::sleep_for(100ms);
         }
+        printf("PENIRQ : %X \n\n",penirq());
+        if(penirq())
+        {
+            //Touch detected
+            set_mode(PenTrg);
+
+            func(pointcheck[0],pointcheck[1]);
+            i2c_read_channel();
+            printf("Touch the upper left cross \n\n");
+            printf("-----------------\n\n");
+            printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y);
+            
+            a = coordinates.x;
+            b = coordinates.y;
+            printf("PENIRQ after touch: %X \n\n",penirq());
+        }
+
+        set_mode(PenDet);
+        //Wait for touch
+        while(!touch){
+            ThisThread::sleep_for(100ms);
+        }
+        printf("PENIRQ : %X \n\n",penirq());
+        if(penirq())
+        {
+            //Touch detected
+            set_mode(PenTrg);
+            
+            func(pointcheck[4],pointcheck[5]);
+            i2c_read_channel();
+            printf("Touch the bottom right cross \n\n");
+            printf("-----------------\n\n");
+            printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y);
+            
+            c = coordinates.x;
+            d = coordinates.y;
+        }
+
+        coefficient.x_off = a;
+        coefficient.y_off = b;
+    
+        i = c-a; // delta x
+        coefficient.ax = i / (SCREEN_WIDTH - 10);
+    
+        i = d-b; // delta y
+        coefficient.ay = i / (SCREEN_HEIGHT - 10);
+
         printf("Calibration done!\n\n");
     }
 
-    void SX8650IWLTRT::draw_cross(uint8_t x, uint8_t y)
-    {
-        static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(SCREEN_WIDTH, SCREEN_HEIGHT)];
-        lv_obj_t *canvas = lv_canvas_create(lv_scr_act());
-        lv_canvas_set_buffer(canvas, cbuf, SCREEN_WIDTH, SCREEN_HEIGHT, LV_IMG_CF_TRUE_COLOR);
-
-        uint8_t w = 20;
-        uint8_t h = 20;
-        const lv_point_t vertical[] = {{x, y - h / 2}, {x, y + h / 2}};
-        const lv_point_t vertical[] = {{x, y - h / 2}, {x, y + h / 2}};
-        lv_draw_line_dsc_t line;
-        lv_draw_line_dsc_init(&line);
-        line.color = LV_COLOR_MAKE(255, 255, 255);
-        line.width = 1;
-
-        lv_canvas_draw_line(canvas, vertical, 2, &line);
-
-        const lv_point_t horizontal[] = {{x - w / 2, y}, {x + w / 2, y}};
-
-        lv_canvas_draw_line(canvas, horizontal, 2, &line);
-    }
-
-    void SX8650IWLTRT::set_calibration(uint8_t a ,uint8_t b ,uint8_t c){
+    void SX8650IWLTRT::set_calibration(uint8_t a ,uint8_t b ,uint8_t c ,uint8_t d){
+        if(coefficient.ax != 0 && coefficient.x_off != 0 
+        && coefficient.ay != 0 && coefficient.y_off != 0 )
+        {
+            a = coefficient.ax;
+            b = coefficient.x_off;
+            c = coefficient.ay;
+            d = coefficient.y_off;
+        }
        
     }
 
@@ -185,8 +227,8 @@ namespace sixtron {
         if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         }
-        coordinates.x = ((data[0] & 0x0F)<<8 | data[1])*128/(4095-250);
-        coordinates.y = ((data[2] & 0x0F)<<8 | data[3])*160/(4095-250);
+        coordinates.x = ((data[0] & 0x0F)<<8 | data[1])/*128/(4095-250)*/;
+        coordinates.y = ((data[2] & 0x0F)<<8 | data[3])/*160/(4095-250)*/;
         return 0;
     }
 

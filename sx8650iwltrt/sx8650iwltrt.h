@@ -19,12 +19,16 @@ struct COORDINATES {
 };
 
 struct COEFFICIENT {
-        uint16_t a;
-        uint16_t b;
-        uint16_t c;
-        uint16_t d;
+        uint16_t ax = 0;
+        uint16_t x_off = 0;
+        uint16_t ay = 0;
+        uint16_t y_off = 0;
 };
 
+struct POINT {
+        uint16_t x = 0;
+        uint16_t y = 0;
+};
 
 enum I2CAddress {
         Address1                = (0x91),       // slave address with pin A0 connected to VDD
@@ -45,7 +49,7 @@ enum ChannelAddress : uint8_t {
 enum Mode : uint8_t {
         /* sx8650 MODE ADDRESS DEFINITIONS */
         ManAuto                 = (0XB0),       // Enter Manual or automatic mode
-        Pen_Det                 = (0XC0),       // Enter pen detect mode
+        PenDet                 = (0XC0),       // Enter pen detect mode
         PenTrg                  = (0XE0),       // Enter pen trigger mode
 };
 
@@ -130,6 +134,7 @@ public:
     
      volatile struct COORDINATES coordinates;
      volatile struct COEFFICIENT coefficient;
+
        /*! Constructor
      *
      *  \param sda I2C data line pin
@@ -197,11 +202,13 @@ public:
      */
     uint8_t penirq();
 
-    void calibrate(Callback<uint8_t()> func);
+    void get_touch();
 
-    void draw_cross(uint8_t  x, uint8_t y);
+    void no_touch();
 
-    void set_calibration(uint8_t a ,uint8_t b ,uint8_t c);    
+    void calibrate(Callback<void(int,int)> func);
+
+    void set_calibration(uint8_t a ,uint8_t b ,uint8_t c ,uint8_t d);    
 
 private:
 
@@ -337,8 +344,9 @@ private:
     Callback<void()> _user_callback;
     EventQueue _event_queue;
     Thread _thread;
-   
-
+    unsigned short pp_tx,pp_ty;
+    InterruptIn _nirq;
+    bool touch;
 };
 
 
