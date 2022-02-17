@@ -206,6 +206,8 @@ public:
 
     void no_touch();
 
+    void calibrate_check();
+
     void calibrate(Callback<void(int,int)> func);
 
     void set_calibration(uint8_t a ,uint8_t b ,uint8_t c ,uint8_t d);    
@@ -343,10 +345,12 @@ private:
     I2CAddress _i2cAddress;
     Callback<void()> _user_callback;
     EventQueue _event_queue;
+    EventFlags _event_flags;
     Thread _thread;
     unsigned short pp_tx,pp_ty;
     InterruptIn _nirq;
     bool touch;
+    bool check_calibrate;
 };
 
 

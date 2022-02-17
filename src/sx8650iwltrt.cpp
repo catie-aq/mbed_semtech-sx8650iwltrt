@@ -20,6 +20,9 @@
 #define SCREEN_HEIGHT   160 
 #define SCREEN_WIDTH    128
 
+/* Event Flag for calibrate */
+#define CROSS_1_CHECK (1UL << 0)
+#define CROSS_2_CHECK (1UL << 9)
 
 namespace sixtron {
 
@@ -32,13 +35,16 @@ namespace sixtron {
     _i2cAddress(i2cAddress),
     _user_callback(nullptr),
     _event_queue(),
+    _event_flags(),
     _thread(),
     _nirq(DIO5)
 
     {
-
+        check_calibrate = false;
         touch = false;
         _thread.start(callback(&_event_queue, &EventQueue::dispatch_forever));
+        _thread.start(mbed::callback(calibrate_check));
+
     }
 
 /* PUBLIC */
@@ -84,7 +90,7 @@ namespace sixtron {
     uint8_t SX8650IWLTRT::convirq(){
         char data;
         i2c_read_register(RegisterAddress::I2CRegStat,&data);
-        return static_cast<uint8_t>(data>>7);
+        return static_cast<uint8_t>(data>>7)&&(0x01);
     }
 
     uint8_t SX8650IWLTRT::penirq(){
@@ -101,10 +107,24 @@ namespace sixtron {
         touch = false;
     }
 
+    void SX8650IWLTRT::calibrate_check()
+    {
+        printf("Waiting for any flag from 0x%08lx.\r\n", CROSS_1_CHECK & CROSS_2_CHECK);
+        uint32_t flags_read = 0;
+        while (true) {
+            flags_read = _event_flags.wait_all(CROSS_1_CHECK & CROSS_2_CHECK);
+            printf("Got: 0x%08lx\r\n", flags_read);
+            if(flag_read){
+                check_calibrate = true;
+            }
+        }
+    }
+
     void SX8650IWLTRT::calibrate(Callback<void(int,int)> func){
-        
+        // check if calibrate not already done
+
         int i = 0;
-        uint8_t a = 0 , b = 0 , c = 0 , d = 0 ;
+        uint16_t a = 0 , b = 0 , c = 0 , d = 0 ;
         uint16_t pointcheck[6] = {10, 10, SCREEN_WIDTH/2, SCREEN_HEIGHT/2, SCREEN_WIDTH - 10, SCREEN_HEIGHT -10};
         POINT p;
         set_filt(FILT_5SA);
@@ -117,7 +137,7 @@ namespace sixtron {
         while(!touch){
             ThisThread::sleep_for(100ms);
         }
-        printf("PENIRQ : %X \n\n",penirq());
+        printf("PENIRQ first cross : %X \n\n",penirq());
         if(penirq())
         {
             //Touch detected
@@ -131,15 +151,16 @@ namespace sixtron {
             
             a = coordinates.x;
             b = coordinates.y;
-            printf("PENIRQ after touch: %X \n\n",penirq());
+            printf(" a %u | b %u \n\n",a,b);
+            _event_flags.set(CROSS_1_CHECK);
         }
 
         set_mode(PenDet);
         //Wait for touch
         while(!touch){
-            ThisThread::sleep_for(100ms);
+            ThisThread::sleep_for(1000ms);
         }
-        printf("PENIRQ : %X \n\n",penirq());
+        printf("PENIRQ second cross : %X \n\n",penirq());
         if(penirq())
         {
             //Touch detected
@@ -150,9 +171,11 @@ namespace sixtron {
             printf("Touch the bottom right cross \n\n");
             printf("-----------------\n\n");
             printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y);
-            
             c = coordinates.x;
             d = coordinates.y;
+            printf(" c %u | d %u \n\n",c,d);
+            _event_flags.set(CROSS_2_CHECK);
+
         }
 
         coefficient.x_off = a;
