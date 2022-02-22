@@ -14,15 +14,17 @@
 namespace sixtron {
 
 struct COORDINATES {
-        uint16_t x = 2;
-        uint16_t y = 2;
+        uint16_t x = 0;
+        uint16_t y = 0;
 };
 
 struct COEFFICIENT {
-        uint16_t ax = 0;
-        uint16_t x_off = 0;
-        uint16_t ay = 0;
-        uint16_t y_off = 0;
+        float ax = 2.00;
+        float bx = 2.00;
+        float x_off = 2.00;
+        float ay = 2.00;
+        float by = 2.00;
+        float y_off = 2.00;
 };
 
 struct POINT {
@@ -134,6 +136,7 @@ public:
     
      volatile struct COORDINATES coordinates;
      volatile struct COEFFICIENT coefficient;
+     volatile struct POINT coord;
 
        /*! Constructor
      *
@@ -143,7 +146,7 @@ public:
      *  \param miso SPI data output from slave pin
      *  \param sck SPI serial clock line pin
      */
-    SX8650IWLTRT(PinName i2c_sda, PinName i2c_scl,PinName spi_mosi,PinName spi_miso ,PinName spi_sck,I2CAddress i2cAddress = I2CAddress::Address2 );
+    SX8650IWLTRT(PinName i2c_sda, PinName i2c_scl,I2CAddress i2cAddress = I2CAddress::Address2 );
 
     /*! SX8650IWLTRT software reset
      */
@@ -163,8 +166,6 @@ public:
      * \param function callback to execute on interrupt
      */
     void attach(Callback<void()> function);
-
-    void read_channel();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -202,15 +203,15 @@ public:
      */
     uint8_t penirq();
 
-    void get_touch();
+    void nirq_fall();
 
-    void no_touch();
+    void read_channel();
 
     void calibrate_check();
 
     void calibrate(Callback<void(int,int)> func);
 
-    void set_calibration(uint8_t a ,uint8_t b ,uint8_t c ,uint8_t d);    
+    void set_calibration();    
 
 private:
 
@@ -340,8 +341,19 @@ private:
      */
     RegChanMskAddress reg_chan_msk();
 
+    /*! Set touch to true
+     *
+     * \return mask
+     */
+    void get_touch();
+
+    /*! Set touch to false
+     *
+     * 
+     */
+    void no_touch();
+
     I2C _i2c;
-    SPI _spi;
     I2CAddress _i2cAddress;
     Callback<void()> _user_callback;
     EventQueue _event_queue;
@@ -349,6 +361,7 @@ private:
     Thread _thread;
     unsigned short pp_tx,pp_ty;
     InterruptIn _nirq;
+    DigitalOut _led1;
     bool touch;
     bool check_calibrate;
 };
