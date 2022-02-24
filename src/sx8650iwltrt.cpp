@@ -20,9 +20,9 @@
 #define SCREEN_WIDTH    128
 
 /* Event Flag for calibrate */
-#define CROSS_1_CHECK (1UL << 0)
-#define CROSS_2_CHECK (1UL << 1)
-#define CROSS_3_CHECK (1UL << 2)
+#define TOUCH_DETECTED (1UL << 0)
+#define CALIBRATE_CHECK (1UL << 0)
+
 
 namespace sixtron {
 
@@ -40,7 +40,9 @@ namespace sixtron {
         check_calibrate = false;
         touch = false;
         _thread.start(callback(&_event_queue, &EventQueue::dispatch_forever));        
-        // _nirq.fall(_event_queue.event(this,&SX8650IWLTRT::nirq_fall));
+        _nirq.fall(_event_queue.event(callback(this,&SX8650IWLTRT::get_touch)));
+        _nirq.rise(callback(this,&SX8650IWLTRT::no_touch));
+
     }
 
 
@@ -91,24 +93,10 @@ namespace sixtron {
         return static_cast<uint8_t>(data>>6)&&(0x01);
     }
 
-    void SX8650IWLTRT::nirq_fall(){
-        read_channel();
-        printf("-----------------\n\n");
-        printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y); 
-        _led1 = !_led1;   
-    } 
-
-    void SX8650IWLTRT::read_channel(){
-        i2c_read_channel();
-        coord.x = coefficient.ax*coordinates.x + coefficient.bx*coordinates.x + coefficient.x_off;
-        coord.y = coefficient.ay*coordinates.x + coefficient.by*coordinates.x + coefficient.y_off;
-        
-    }
-
     void SX8650IWLTRT::calibrate_check()
     {
         uint32_t flags_read = 0; 
-        flags_read = _event_flags.wait_all(CROSS_1_CHECK & CROSS_2_CHECK & CROSS_1_CHECK);        
+        flags_read = _event_flags.wait_any(CALIBRATE_CHECK);        
         if(flags_read != 0){
             check_calibrate = true;
         }
@@ -116,17 +104,16 @@ namespace sixtron {
 
     void SX8650IWLTRT::calibrate(Callback<void(int,int)> func){
         
-        float x0 = 0 , y0 = 0 , x1 = 0 , y1 = 0 , x2 = 0 , y2 = 0 , k = 0;
         float xd0 , xd1 , xd2 , yd0 , yd1 , yd2;
-        uint16_t pointcheck[6] = {10, 10, SCREEN_WIDTH - 10, SCREEN_HEIGHT/2, SCREEN_WIDTH - 30, SCREEN_HEIGHT -10};
+        uint16_t pointcheck[6] = {10, 10, SCREEN_WIDTH - 20, SCREEN_HEIGHT/2, SCREEN_WIDTH - 30, SCREEN_HEIGHT -10};
         
-        xd0 = (SCREEN_WIDTH - pointcheck[0]);
-        xd1 = (SCREEN_WIDTH - pointcheck[2]);
-        xd2 = (SCREEN_WIDTH - pointcheck[4]);
-        yd0 = (SCREEN_HEIGHT - pointcheck[1]);
-        yd1 = (SCREEN_HEIGHT - pointcheck[3]);
-        yd2 = (SCREEN_HEIGHT - pointcheck[5]);
-
+        xd0 = pointcheck[0];
+        xd1 = pointcheck[2];
+        xd2 = pointcheck[4];
+        yd0 = pointcheck[1];
+        yd1 = pointcheck[3];
+        yd2 = pointcheck[5];
+        
         set_filt(FILT_5SA);
 
         /* Check if calibration not already done */
@@ -134,93 +121,76 @@ namespace sixtron {
         if (check_calibrate){
             printf("Calibration already done!\n\n");
         }
-        else{
-
-            /* Draw points on the screen */
-            func(pointcheck[0],pointcheck[1]);
-            func(pointcheck[2],pointcheck[3]);
-            func(pointcheck[4],pointcheck[5]);
-
-            _nirq.fall(callback(this,&SX8650IWLTRT::get_touch));
-            _nirq.rise(callback(this,&SX8650IWLTRT::no_touch));
+        else{            
+            
+            _event_flags.clear(TOUCH_DETECTED);
 
             printf("First touch the upper left cross \n\n");
             printf("Then touch the middle right cross \n\n");
             printf("Finaly touch the bottom right cross \n\n");
+            
+            /* Draw points on the screen */
+
+            func(pointcheck[0],pointcheck[1]);
 
             /* Wait for touch */
-            while(!touch){
-                ThisThread::sleep_for(100ms);
-            }
-            
-            /* Touch detected */
-            // set_mode(PenTrg);
 
-            // if (x0 != 0 && y0 != 0) 
-            // {
-            //     _event_flags.set(CROSS_1_CHECK);
-            // }
-            // _event_flags.wait_any(CROSS_1_CHECK , osWaitForever, true);
+            _event_flags.wait_any(TOUCH_DETECTED);
+
+            /* Touch detected */
 
             i2c_read_channel();
             printf("Upper left cross \n\n");
-            printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y);
+            printf("X : %u | Y : %u \n\n",raw_coordinates.x,raw_coordinates.y);
                 
-            x0 = coordinates.x;
-            y0 = coordinates.y;
-            
-            printf("-----------------\n\n");
+            x0 = raw_coordinates.x;
+            y0 = raw_coordinates.y;
 
+            printf("-----------------\n\n");       
             
-            /* Wait for touch */
-            while(!touch){
-                ThisThread::sleep_for(100ms);
-            }
+            /* Draw points on the screen */
+            
+            func(pointcheck[2],pointcheck[3]);
+
+            while(abs(x0 - raw_coordinates.x) < 500 && (abs(y0 - raw_coordinates.y) < 500)){
+                _event_flags.wait_any(TOUCH_DETECTED);
+                i2c_read_channel();
+                printf("%f %d \n\n",x0,raw_coordinates.x);
+            }       
             
             /* Touch detected */
-            // set_mode(PenTrg);
-            
-            // if (x1 != 0 && y1 != 0) 
-            // {
-            //     _event_flags.set(CROSS_2_CHECK);
-            // }
-            // _event_flags.wait_any(CROSS_2_CHECK , osWaitForever, true);
 
             i2c_read_channel();
             printf("Middle right cross \n\n");
-            printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y);
+            printf("X : %u | Y : %u \n\n",raw_coordinates.x,raw_coordinates.y);
 
-            x1 = coordinates.x;
-            y1 = coordinates.y;
+            x1 = raw_coordinates.x;
+            y1 = raw_coordinates.y;
 
             printf("-----------------\n\n");
-        
 
-            /* Wait for touch */
-            while(!touch){
-                ThisThread::sleep_for(100ms);
-            }
+            /* Draw points on the screen */
+
+            func(pointcheck[4],pointcheck[5]);
             
-            /* Touch detected */
-            // set_mode(PenTrg);
+            while(abs((x1 - raw_coordinates.x) < 500) && (abs(y1 - raw_coordinates.y) < 500)){
+                _event_flags.wait_any(TOUCH_DETECTED);
+                i2c_read_channel();
+                printf("%f %d \n\n",x1,raw_coordinates.x);
+            }
 
-            // if (x2 != 0 && y2 != 0) 
-            // {
-            //     _event_flags.set(CROSS_3_CHECK);
-            // }
-            // _event_flags.wait_any(CROSS_3_CHECK , osWaitForever, true);
+            /* Touch detected */
 
             i2c_read_channel();
             printf("Bottom right cross \n\n");
-            printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y);
+            printf("X : %u | Y : %u \n\n",raw_coordinates.x,raw_coordinates.y);
 
-            x2 = coordinates.x;
-            y2 = coordinates.y;
+            x2 = raw_coordinates.x;
+            y2 = raw_coordinates.y;
 
             printf("-----------------\n\n");
-        
 
-            // _event_flags.wait_all(CROSS_1_CHECK & CROSS_2_CHECK & CROSS_3_CHECK , osWaitForever, true);
+            /* Calculate coefficient */
 
             k = (x0-x2)*(y1-y2)-(x1-x2)*(y0-y2);
             coefficient.ax = ((xd0-xd2)*(y1-y2)-(xd1-xd2)*(y0-y2))/k;
@@ -229,20 +199,24 @@ namespace sixtron {
             coefficient.ay = ((yd0-yd2)*(y1-y2)-(yd1-yd2)*(y0-y2))/k;
             coefficient.by = ((x0-x2)*(yd1-yd2)-(yd0-yd2)*(x1-x2))/k;
             coefficient.y_off = (y0*(x2*yd1-x1*yd2)+y1*(x0*yd2-x2*yd0)+y2*(x1*yd0-x0*yd1))/k;
-        
-        
+                
             printf("Calibration done!\n\n");
             printf("AX %f | BX %f | XoFF %f || AY %f | BY %f | Yoff %f \n\n",coefficient.ax,coefficient.bx,coefficient.x_off,coefficient.ay,coefficient.by,coefficient.y_off);
+            
+            check_calibrate = true;
+
         }
     }
 
-    void SX8650IWLTRT::set_calibration(){
-        if(coefficient.ax != 2.00 && coefficient.bx != 2.00 
-        && coefficient.ax != 2.00 && coefficient.by != 2.00 
-        && coefficient.x_off != 2.00 && coefficient.y_off != 200 )
+    void SX8650IWLTRT::set_calibration(float ax, float bx , float x_off, float ay , float by , float y_off){
+        if(check_calibrate)
         {
-            printf("Calibration already done!\n\n");
-            check_calibrate = true;
+           coefficient.ax    =  ax ;
+           coefficient.bx    =  bx ;
+           coefficient.x_off =  x_off;
+           coefficient.ay    =  ay ;
+           coefficient.by    =  by ;
+           coefficient.y_off =  y_off ;
         }
        
     }
@@ -295,8 +269,8 @@ namespace sixtron {
         if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
             return -2;
         } 
-        coordinates.x = ((data[0] & 0x0F)<<8 | data[1])/*128/(4095-220)*/;
-        coordinates.y = ((data[2] & 0x0F)<<8 | data[3])/*160/(4095-180)*/;
+        raw_coordinates.x = ((data[0] & 0x0F)<<8 | data[1])/*128/(4095-220)*/;
+        raw_coordinates.y = ((data[2] & 0x0F)<<8 | data[3])/*160/(4095-180)*/;
         return 0;
     }
 
@@ -362,6 +336,18 @@ namespace sixtron {
 
     void SX8650IWLTRT::get_touch(){
         touch = true;
+        _event_flags.set(TOUCH_DETECTED);
+        printf("IT\n");
+
+        /* Read value */
+        if(check_calibrate){
+            i2c_read_channel();
+            coordinates.x = coefficient.ax*raw_coordinates.x + coefficient.bx*raw_coordinates.y + coefficient.x_off;
+            coordinates.y = coefficient.ay*raw_coordinates.x + coefficient.by*raw_coordinates.y + coefficient.y_off;
+            printf("-----------------\n\n");
+            printf("X : %u | Y : %u \n\n",raw_coordinates.x,raw_coordinates.y); 
+            _led1 = !_led1;   
+        }
     }
 
     void SX8650IWLTRT::no_touch(){

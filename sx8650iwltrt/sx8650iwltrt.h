@@ -13,23 +13,18 @@
 
 namespace sixtron {
 
-struct COORDINATES {
+struct coordinates {
         uint16_t x = 0;
         uint16_t y = 0;
 };
 
-struct COEFFICIENT {
+struct coefficient {
         float ax = 2.00;
         float bx = 2.00;
         float x_off = 2.00;
         float ay = 2.00;
         float by = 2.00;
         float y_off = 2.00;
-};
-
-struct POINT {
-        uint16_t x = 0;
-        uint16_t y = 0;
 };
 
 enum I2CAddress {
@@ -134,9 +129,9 @@ class SX8650IWLTRT
 {
 public:
     
-     volatile struct COORDINATES coordinates;
-     volatile struct COEFFICIENT coefficient;
-     volatile struct POINT coord;
+     volatile struct coordinates raw_coordinates;
+     volatile struct coefficient coefficient;
+     volatile struct coordinates coordinates;
 
        /*! Constructor
      *
@@ -203,15 +198,12 @@ public:
      */
     uint8_t penirq();
 
-    void nirq_fall();
-
-    void read_channel();
-
     void calibrate_check();
 
     void calibrate(Callback<void(int,int)> func);
 
-    void set_calibration();    
+    void set_calibration(float ax, float bx , float x_off, float ay , float by , float y_off);    
+    int i2c_read_channel();
 
 private:
 
@@ -253,7 +245,7 @@ private:
      * \returns 0 on success,
      *          no-0 on failure
      */
-    int i2c_read_channel();
+//     int i2c_read_channel();
 
     /*! Select the SX8650IWLTRT channel
      *
@@ -359,11 +351,12 @@ private:
     EventQueue _event_queue;
     EventFlags _event_flags;
     Thread _thread;
-    unsigned short pp_tx,pp_ty;
     InterruptIn _nirq;
     DigitalOut _led1;
     bool touch;
     bool check_calibrate;
+    float x0 = 0 , y0 = 0 , x1 = 0 , y1 = 0 , x2 = 0 , y2 = 0 , k = 0;
+
 };
 
 
