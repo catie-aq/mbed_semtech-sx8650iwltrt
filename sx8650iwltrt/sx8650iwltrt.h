@@ -116,6 +116,7 @@ enum PenResistor : uint8_t {
         RPDNT_50_KOHM           = (0x08),       
         RPDNT_25_KOHM           = (0x0C),            
 };
+
 enum RegChanMskAddress : uint8_t {
         /* sx8650 bits for register , I2CRegChanMsk */
         CONV_X                  = (0x80),       // 0: no sample 1: sample, report X channel
@@ -125,8 +126,14 @@ enum RegChanMskAddress : uint8_t {
         CONV_AUX                = (0x08),       // 0: no sample 1: sample, report AUX channel
 };
 
+enum CalibrationMode : uint8_t {
+        Activated                = (0x01),     
+        Deactivated              = (0x00),      
+};
+
 class SX8650IWLTRT
 {
+
 public:
     
      volatile struct coordinates raw_coordinates;
@@ -203,7 +210,6 @@ public:
     void calibrate(Callback<void(int,int)> func);
 
     void set_calibration(float ax, float bx , float x_off, float ay , float by , float y_off);    
-    int i2c_read_channel();
 
 private:
 
@@ -245,7 +251,7 @@ private:
      * \returns 0 on success,
      *          no-0 on failure
      */
-//     int i2c_read_channel();
+    int i2c_read_channel();
 
     /*! Select the SX8650IWLTRT channel
      *
@@ -353,10 +359,9 @@ private:
     Thread _thread;
     InterruptIn _nirq;
     DigitalOut _led1;
-    bool touch;
     bool check_calibrate;
     float x0 = 0 , y0 = 0 , x1 = 0 , y1 = 0 , x2 = 0 , y2 = 0 , k = 0;
-
+    CalibrationMode status_calibration;
 };
 
 

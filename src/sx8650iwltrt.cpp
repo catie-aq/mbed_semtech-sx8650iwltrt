@@ -38,10 +38,9 @@ namespace sixtron {
 
     {
         check_calibrate = false;
-        touch = false;
+        status_calibration = CalibrationMode::Deactivated;
         _thread.start(callback(&_event_queue, &EventQueue::dispatch_forever));        
-        _nirq.fall(_event_queue.event(callback(this,&SX8650IWLTRT::get_touch)));
-        _nirq.rise(callback(this,&SX8650IWLTRT::no_touch));
+        _nirq.fall(_event_queue.event(this,&SX8650IWLTRT::get_touch));
 
     }
 
@@ -96,7 +95,6 @@ namespace sixtron {
     void SX8650IWLTRT::calibrate_check()
     {
         uint32_t flags_read = 0; 
-        flags_read = _event_flags.wait_any(CALIBRATE_CHECK);        
         if(flags_read != 0){
             check_calibrate = true;
         }
@@ -106,7 +104,7 @@ namespace sixtron {
         
         float xd0 , xd1 , xd2 , yd0 , yd1 , yd2;
         uint16_t pointcheck[6] = {10, 10, SCREEN_WIDTH - 20, SCREEN_HEIGHT/2, SCREEN_WIDTH - 30, SCREEN_HEIGHT -10};
-        
+        status_calibration = CalibrationMode::Activated;
         xd0 = pointcheck[0];
         xd1 = pointcheck[2];
         xd2 = pointcheck[4];
@@ -155,7 +153,7 @@ namespace sixtron {
             while(abs(x0 - raw_coordinates.x) < 500 && (abs(y0 - raw_coordinates.y) < 500)){
                 _event_flags.wait_any(TOUCH_DETECTED);
                 i2c_read_channel();
-                printf("%f %d \n\n",x0,raw_coordinates.x);
+                // printf("%f %d \n\n",x0,raw_coordinates.x);
             }       
             
             /* Touch detected */
@@ -176,7 +174,7 @@ namespace sixtron {
             while(abs((x1 - raw_coordinates.x) < 500) && (abs(y1 - raw_coordinates.y) < 500)){
                 _event_flags.wait_any(TOUCH_DETECTED);
                 i2c_read_channel();
-                printf("%f %d \n\n",x1,raw_coordinates.x);
+                // printf("%f %d \n\n",x1,raw_coordinates.x);
             }
 
             /* Touch detected */
@@ -203,8 +201,7 @@ namespace sixtron {
             printf("Calibration done!\n\n");
             printf("AX %f | BX %f | XoFF %f || AY %f | BY %f | Yoff %f \n\n",coefficient.ax,coefficient.bx,coefficient.x_off,coefficient.ay,coefficient.by,coefficient.y_off);
             
-            check_calibrate = true;
-
+            status_calibration = CalibrationMode::Deactivated;
         }
     }
 
@@ -335,23 +332,21 @@ namespace sixtron {
     }
 
     void SX8650IWLTRT::get_touch(){
-        touch = true;
-        _event_flags.set(TOUCH_DETECTED);
         printf("IT\n");
 
         /* Read value */
-        if(check_calibrate){
+        if(status_calibration == CalibrationMode::Deactivated){
             i2c_read_channel();
             coordinates.x = coefficient.ax*raw_coordinates.x + coefficient.bx*raw_coordinates.y + coefficient.x_off;
             coordinates.y = coefficient.ay*raw_coordinates.x + coefficient.by*raw_coordinates.y + coefficient.y_off;
             printf("-----------------\n\n");
-            printf("X : %u | Y : %u \n\n",raw_coordinates.x,raw_coordinates.y); 
+            printf("X : %u | Y : %u \n\n",coordinates.x,coordinates.y); 
             _led1 = !_led1;   
         }
-    }
+        else{
+            _event_flags.set(TOUCH_DETECTED);
 
-    void SX8650IWLTRT::no_touch(){
-        touch = false;
+        }
     }
     
 } // namespace sixtron
