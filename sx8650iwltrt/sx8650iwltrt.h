@@ -6,8 +6,6 @@
 #ifndef CATIE_SIXTRON_SX8650IWLTRT_H_
 #define CATIE_SIXTRON_SX8650IWLTRT_H_
 
-#include "ili9163c.h"
-#include "lvgl.h"
 #include "mbed.h"
 
 namespace sixtron {
@@ -136,9 +134,9 @@ enum CalibrationMode : uint8_t {
 class SX8650IWLTRT {
 
 public:
-    volatile struct coordinates raw_coordinates;
-    volatile struct coefficient coefficient;
-    volatile struct coordinates coordinates;
+    volatile struct coordinates _raw_coordinates;
+    volatile struct coefficient _coefficient;
+    volatile struct coordinates _coordinates;
 
     /*! Constructor
      *
@@ -223,6 +221,30 @@ public:
      * \param y_off
      */
     void set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off);
+
+    /*! Set the height of the touchscreen
+     *
+     * \param height uint16_t  to be applied
+     */
+    void set_height(uint16_t height);
+
+    /*! Get the height of the touchscreen
+     *
+     * \return height uint16_t
+     */
+    uint16_t height();
+
+    /*! Set the width of the touchscreen
+     *
+     * \param width uint16_t  to be applied
+     */
+    void set_width(uint16_t width);
+
+    /*! Get the width of the touchscreen
+     *
+     * \return width uint16_t
+     */
+    uint16_t width();
 
 private:
     /*! Set register value
@@ -368,8 +390,10 @@ private:
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
-    float x0 = 0, y0 = 0, x1 = 0, y1 = 0, x2 = 0, y2 = 0, k = 0;
+    float _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
     CalibrationMode status_calibration;
+    uint16_t _height = 160;
+    uint16_t _width = 128;
 };
 
 } // namespace sixtron

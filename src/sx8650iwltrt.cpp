@@ -16,12 +16,6 @@
 #define STATUS_CONVIRQ 0x80 // I2C_REG_STAT: end of conversion flag
 #define STATUS_PENIRQ 0x40 // I2C_REG_STAT: pen detected
 
-/* Screen size */
-#define SCREEN_HEIGHT 160
-#define SCREEN_WIDTH 128
-
-// setter getter
-
 /* Event Flag for calibrate */
 #define TOUCH_DETECTED (1UL << 0)
 
@@ -95,13 +89,36 @@ uint8_t SX8650IWLTRT::penirq()
     return static_cast<uint8_t>(data >> 6) && (0x01);
 }
 
+void SX8650IWLTRT::set_height(uint16_t height)
+{
+    _height = height;
+}
+
+uint16_t SX8650IWLTRT::height()
+{
+    return _height;
+}
+
+void SX8650IWLTRT::set_width(uint16_t width)
+{
+    _width = width;
+}
+
+uint16_t SX8650IWLTRT::width()
+{
+    return _width;
+}
+
 void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 {
 
     float xd0, xd1, xd2, yd0, yd1, yd2;
-    uint16_t pointcheck[6] = {
-        10, 10, SCREEN_WIDTH - 20, SCREEN_HEIGHT / 2, SCREEN_WIDTH - 30, SCREEN_HEIGHT - 10
-    };
+    uint16_t pointcheck[6] = { 10,
+        10,
+        uint16_t(_width - 20),
+        uint16_t(_height / 2),
+        uint16_t(_width - 30),
+        uint16_t(_height - 10) };
     status_calibration = CalibrationMode::Activated;
     xd0 = pointcheck[0];
     xd1 = pointcheck[2];
@@ -123,72 +140,48 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 
     /* Touch detected */
 
-    printf("Upper left cross \n\n");
-    printf("X : %u | Y : %u \n\n", raw_coordinates.x, raw_coordinates.y);
-
-    x0 = raw_coordinates.x;
-    y0 = raw_coordinates.y;
-
-    printf("-----------------\n\n");
+    _x0 = _raw_coordinates.x;
+    _y0 = _raw_coordinates.y;
 
     /* Draw points on the screen */
 
     func(pointcheck[2], pointcheck[3]);
 
-    while (abs(x0 - raw_coordinates.x) < 500 && (abs(y0 - raw_coordinates.y) < 500)) {
+    while (abs(_x0 - _raw_coordinates.x) < 500 && (abs(_y0 - _raw_coordinates.y) < 500)) {
         _event_flags.wait_any(TOUCH_DETECTED);
     }
 
     /* Touch detected */
 
-    printf("Middle right cross \n\n");
-    printf("X : %u | Y : %u \n\n", raw_coordinates.x, raw_coordinates.y);
-
-    x1 = raw_coordinates.x;
-    y1 = raw_coordinates.y;
-
-    printf("-----------------\n\n");
+    _x1 = _raw_coordinates.x;
+    _y1 = _raw_coordinates.y;
 
     /* Draw points on the screen */
 
     func(pointcheck[4], pointcheck[5]);
 
-    while (abs((x1 - raw_coordinates.x) < 500) && (abs(y1 - raw_coordinates.y) < 500)) {
+    while (abs((_x1 - _raw_coordinates.x) < 500) && (abs(_y1 - _raw_coordinates.y) < 500)) {
         _event_flags.wait_any(TOUCH_DETECTED);
     }
 
     /* Touch detected */
 
-    printf("Bottom right cross \n\n");
-    printf("X : %u | Y : %u \n\n", raw_coordinates.x, raw_coordinates.y);
-
-    x2 = raw_coordinates.x;
-    y2 = raw_coordinates.y;
-
-    printf("-----------------\n\n");
+    _x2 = _raw_coordinates.x;
+    _y2 = _raw_coordinates.y;
 
     /* Calculate coefficient */
 
-    k = (x0 - x2) * (y1 - y2) - (x1 - x2) * (y0 - y2);
-    coefficient.ax = ((xd0 - xd2) * (y1 - y2) - (xd1 - xd2) * (y0 - y2)) / k;
-    coefficient.bx = ((x0 - x2) * (xd1 - xd2) - (xd0 - xd2) * (x1 - x2)) / k;
-    coefficient.x_off
-            = (y0 * (x2 * xd1 - x1 * xd2) + y1 * (x0 * xd2 - x2 * xd0) + y2 * (x1 * xd0 - x0 * xd1))
-            / k;
-    coefficient.ay = ((yd0 - yd2) * (y1 - y2) - (yd1 - yd2) * (y0 - y2)) / k;
-    coefficient.by = ((x0 - x2) * (yd1 - yd2) - (yd0 - yd2) * (x1 - x2)) / k;
-    coefficient.y_off
-            = (y0 * (x2 * yd1 - x1 * yd2) + y1 * (x0 * yd2 - x2 * yd0) + y2 * (x1 * yd0 - x0 * yd1))
-            / k;
-
-    printf("Calibration done!\n\n");
-    printf("AX %f | BX %f | XoFF %f || AY %f | BY %f | Yoff %f \n\n",
-            coefficient.ax,
-            coefficient.bx,
-            coefficient.x_off,
-            coefficient.ay,
-            coefficient.by,
-            coefficient.y_off);
+    _k = (_x0 - _x2) * (_y1 - _y2) - (_x1 - _x2) * (_y0 - _y2);
+    _coefficient.ax = ((xd0 - xd2) * (_y1 - _y2) - (xd1 - xd2) * (_y0 - _y2)) / _k;
+    _coefficient.bx = ((_x0 - _x2) * (xd1 - xd2) - (xd0 - xd2) * (_x1 - _x2)) / _k;
+    _coefficient.x_off = (_y0 * (_x2 * xd1 - _x1 * xd2) + _y1 * (_x0 * xd2 - _x2 * xd0)
+                                 + _y2 * (_x1 * xd0 - _x0 * xd1))
+            / _k;
+    _coefficient.ay = ((yd0 - yd2) * (_y1 - _y2) - (yd1 - yd2) * (_y0 - _y2)) / _k;
+    _coefficient.by = ((_x0 - _x2) * (yd1 - yd2) - (yd0 - yd2) * (_x1 - _x2)) / _k;
+    _coefficient.y_off = (_y0 * (_x2 * yd1 - _x1 * yd2) + _y1 * (_x0 * yd2 - _x2 * yd0)
+                                 + _y2 * (_x1 * yd0 - _x0 * yd1))
+            / _k;
 
     status_calibration = CalibrationMode::Deactivated;
 }
@@ -196,12 +189,12 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 void SX8650IWLTRT::set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off)
 {
 
-    coefficient.ax = ax;
-    coefficient.bx = bx;
-    coefficient.x_off = x_off;
-    coefficient.ay = ay;
-    coefficient.by = by;
-    coefficient.y_off = y_off;
+    _coefficient.ax = ax;
+    _coefficient.bx = bx;
+    _coefficient.x_off = x_off;
+    _coefficient.ay = ay;
+    _coefficient.by = by;
+    _coefficient.y_off = y_off;
 }
 
 /* PRIVATE */
@@ -257,8 +250,8 @@ int SX8650IWLTRT::i2c_read_channel()
     if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
         return -2;
     }
-    raw_coordinates.x = ((data[0] & 0x0F) << 8 | data[1]);
-    raw_coordinates.y = ((data[2] & 0x0F) << 8 | data[3]);
+    _raw_coordinates.x = ((data[0] & 0x0F) << 8 | data[1]);
+    _raw_coordinates.y = ((data[2] & 0x0F) << 8 | data[3]);
     return 0;
 }
 
@@ -341,12 +334,12 @@ void SX8650IWLTRT::get_touch()
 
     /* Read value */
     if (status_calibration == CalibrationMode::Deactivated) {
-        coordinates.x = int(coefficient.ax * raw_coordinates.x + coefficient.bx * raw_coordinates.y
-                + coefficient.x_off);
-        coordinates.y = int(coefficient.ay * raw_coordinates.x + coefficient.by * raw_coordinates.y
-                + coefficient.y_off);
+        _coordinates.x = int(_coefficient.ax * _raw_coordinates.x
+                + _coefficient.bx * _raw_coordinates.y + _coefficient.x_off);
+        _coordinates.y = int(_coefficient.ay * _raw_coordinates.x
+                + _coefficient.by * _raw_coordinates.y + _coefficient.y_off);
 
-        _user_callback(coordinates.x, coordinates.y);
+        _user_callback(_coordinates.x, _coordinates.y);
     } else {
         _event_flags.set(TOUCH_DETECTED);
     }
