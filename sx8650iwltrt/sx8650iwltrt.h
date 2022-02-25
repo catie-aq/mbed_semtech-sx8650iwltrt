@@ -148,7 +148,10 @@ public:
      *  \param miso SPI data output from slave pin
      *  \param sck SPI serial clock line pin
      */
-    SX8650IWLTRT(PinName i2c_sda, PinName i2c_scl,EventQueue *_event_queue, I2CAddress i2cAddress = I2CAddress::Address2);
+    SX8650IWLTRT(PinName i2c_sda,
+            PinName i2c_scl,
+            EventQueue *_event_queue,
+            I2CAddress i2cAddress = I2CAddress::Address2);
 
     /*! SX8650IWLTRT software reset
      */
@@ -167,7 +170,7 @@ public:
      *
      * \param function callback to execute on interrupt
      */
-    void attach(Callback<void(uint16_t,uint16_t)> function);
+    void attach(Callback<void(uint16_t, uint16_t)> function);
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -210,14 +213,14 @@ public:
      * \param function draw points to calibrate
      */
     void calibrate(Callback<void(int, int)> func);
-    
-    /*! Set coefficient to calibrate touchscreen 
-     * \param ax 
-     * \param bx 
-     * \param x_off 
-     * \param ay 
-     * \param by 
-     * \param y_off 
+
+    /*! Set coefficient to calibrate touchscreen
+     * \param ax
+     * \param bx
+     * \param x_off
+     * \param ay
+     * \param by
+     * \param y_off
      */
     void set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off);
 
@@ -361,7 +364,7 @@ private:
 
     I2C _i2c;
     I2CAddress _i2cAddress;
-    Callback<void(uint16_t,uint16_t)> _user_callback;
+    Callback<void(uint16_t, uint16_t)> _user_callback;
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
