@@ -102,11 +102,21 @@ enum Time : uint8_t {
 };
 enum RegCtrl1Address : uint8_t {
     /* sx8650 bits for RegCtrl1 */
-    CONDIRQ = (0x20), // enable conditional interrupts
+    CONDIRQ = (0x20), // interrupt generated when pen detect is successful
+    NO_CONDIRQ = (0x00), // interrupt always generated at end of conversion cycle. If no pen
+                         // is detected the data is set to ‘invalid qualified’.
     FILT_NONE = (0x00), // no averaging
     FILT_3SA = (0x01), // 3 sample averaging
     FILT_5SA = (0x02), // 5 sample averaging
     FILT_7SA = (0x03), // 7 samples, sort, then average of 3 middle samples
+};
+
+enum AuxAqc : uint8_t {
+    /* sx8650 bits for RegCtrl1 : select the pen detect resistor */
+    AUX_ANALOG = (0x00), // AUX is used as an analog input
+    AUX_RISE = (0x40), // On rising AUX edge, wait POWDLY and start acquisition
+    AUX_FALL = (0x80), // On falling AUX edge, wait POWDLY and start acquisition
+    AUX_RISE_FALL = (0xC0), // On rising and falling AUX edges, wait POWDLY and start acquisition
 };
 
 enum PenResistor : uint8_t {
@@ -314,15 +324,15 @@ private:
 
     /*! Set the SX8650IWLTRT RegCtrl1 auxaqc config
      *
-     * \param value RegCtrl1Address Address to be applied
+     * \param value AuxAqc Address to be applied
      */
-    void set_auxaqc(RegCtrl1Address value);
+    void set_auxaqc(AuxAqc value);
 
     /*! Get the SX8650IWLTRT RegCtrl1 auxaqc config
      *
      * \returns auxaqc
      */
-    RegCtrl1Address auxaqc();
+    AuxAqc auxaqc();
 
     /*! Set the SX8650IWLTRT RegCtrl1 pen resistor config
      *
@@ -348,17 +358,17 @@ private:
      */
     RegCtrl1Address filt();
 
-    /*! Set the SX8650IWLTRT RegCtrl1 time of sedly config
+    /*! Set the SX8650IWLTRT RegCtrl1 time of setdly config
      *
      * \param value Powdly Address to be applied
      */
-    void set_sedly(Time value);
+    void set_setdly(Time value);
 
-    /*! Get the SX8650IWLTRT RegCtrl1 time of sedly config
+    /*! Get the SX8650IWLTRT RegCtrl1 time of setdly config
      *
-     * \return sedly
+     * \return setdly
      */
-    Time sedly();
+    Time setdly();
 
     /*! Set the SX8650IWLTRT RegCtrlMsk config
      *
@@ -377,12 +387,6 @@ private:
      *
      */
     void get_touch();
-
-    /*! Set touch to false
-     *
-     *
-     */
-    void no_touch();
 
     I2C _i2c;
     I2CAddress _i2cAddress;
