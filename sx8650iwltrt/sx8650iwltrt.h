@@ -133,6 +133,7 @@ enum RegChanMskAddress : uint8_t {
     CONV_Y = (0x40), // 0: no sample 1: sample, report Y channel
     CONV_Z1 = (0x20), // 0: no sample 1: sample, report Z1 channel
     CONV_Z2 = (0x10), // 0: no sample 1: sample, report Z2 channel
+    CONV_Z = (0x30), // 0: no sample 1: sample, report Z1 and Z2 channel
     CONV_AUX = (0x08), // 0: no sample 1: sample, report AUX channel
 };
 
@@ -256,6 +257,18 @@ public:
      */
     uint16_t width();
 
+    /*! Set the SX8650IWLTRT RegCtrlMsk config
+     *
+     * \param value RegChanMskAddress Address to be applied
+     */
+    void set_reg_chan_msk(RegChanMskAddress value);
+
+    /*! Get the SX8650IWLTRT RegChanMsk config
+     *
+     * \return mask
+     */
+    RegChanMskAddress reg_chan_msk();
+
 private:
     /*! Set register value
      *
@@ -370,24 +383,12 @@ private:
      */
     Time setdly();
 
-    /*! Set the SX8650IWLTRT RegCtrlMsk config
-     *
-     * \param value RegChanMskAddress Address to be applied
-     */
-    void set_reg_chan_msk(RegChanMskAddress value);
-
-    /*! Get the SX8650IWLTRT RegChanMsk config
-     *
-     * \return mask
-     */
-    RegChanMskAddress reg_chan_msk();
-
     /*! Set touch to true
      *
      *
      */
     void get_touch();
-
+    
     I2C _i2c;
     I2CAddress _i2cAddress;
     Callback<void(uint16_t, uint16_t)> _user_callback;

@@ -37,7 +37,6 @@ SX8650IWLTRT::SX8650IWLTRT(
 
 void SX8650IWLTRT::soft_reset()
 {
-    _nirq.disable_irq();
     i2c_set_register(RegisterAddress::I2CRegSoftReset, SX8650_RESET);
 }
 
@@ -131,7 +130,6 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
     yd0 = pointcheck[1];
     yd1 = pointcheck[3];
     yd2 = pointcheck[5];
-    _nirq.enable_irq();
 
     set_filt(FILT_5SA);
 
@@ -202,6 +200,17 @@ void SX8650IWLTRT::set_calibration(float ax, float bx, float x_off, float ay, fl
     _coefficient.y_off = y_off;
 }
 
+void SX8650IWLTRT::set_reg_chan_msk(RegChanMskAddress value)
+{
+    i2c_set_register(RegisterAddress::I2CRegChanMsk, static_cast<char>(value));
+}
+
+RegChanMskAddress SX8650IWLTRT::reg_chan_msk()
+{
+    char data;
+    i2c_read_register(RegisterAddress::I2CRegChanMsk, &data);
+    return static_cast<RegChanMskAddress>(data);
+}
 /* PRIVATE */
 
 void SX8650IWLTRT::select_channel(ChannelAddress value)
@@ -335,33 +344,25 @@ Time SX8650IWLTRT::setdly()
     return static_cast<Time>(tmp);
 }
 
-void SX8650IWLTRT::set_reg_chan_msk(RegChanMskAddress value)
-{
-    i2c_set_register(RegisterAddress::I2CRegChanMsk, static_cast<char>(value));
-}
-
-RegChanMskAddress SX8650IWLTRT::reg_chan_msk()
-{
-    char data;
-    i2c_read_register(RegisterAddress::I2CRegChanMsk, &data);
-    return static_cast<RegChanMskAddress>(data);
-}
-
 void SX8650IWLTRT::get_touch()
 {
 
     i2c_read_channel();
+    if(reg_chan_msk() != 0xC0){
+        _user_callback(_raw_coordinates.x, _raw_coordinates.y);
+    }
+    else{
+        /* Read value */
+        if (status_calibration == CalibrationMode::Deactivated) {
+            _coordinates.x = int(_coefficient.ax * _raw_coordinates.x
+                    + _coefficient.bx * _raw_coordinates.y + _coefficient.x_off);
+            _coordinates.y = int(_coefficient.ay * _raw_coordinates.x
+                    + _coefficient.by * _raw_coordinates.y + _coefficient.y_off);
 
-    /* Read value */
-    if (status_calibration == CalibrationMode::Deactivated) {
-        _coordinates.x = int(_coefficient.ax * _raw_coordinates.x
-                + _coefficient.bx * _raw_coordinates.y + _coefficient.x_off);
-        _coordinates.y = int(_coefficient.ay * _raw_coordinates.x
-                + _coefficient.by * _raw_coordinates.y + _coefficient.y_off);
-
-        _user_callback(_coordinates.x, _coordinates.y);
-    } else {
-        _event_flags.set(TOUCH_DETECTED);
+            _user_callback(_coordinates.x, _coordinates.y);
+        } else {
+            _event_flags.set(TOUCH_DETECTED);
+        }
     }
 }
 
