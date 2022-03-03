@@ -15,6 +15,11 @@ struct coordinates {
     uint16_t y = 0;
 };
 
+struct pressures {
+    uint16_t z1 = 0;
+    uint16_t z2 = 0;
+};
+
 struct coefficient {
     float ax = 2.00;
     float bx = 2.00;
@@ -133,7 +138,6 @@ enum RegChanMskAddress : uint8_t {
     CONV_Y = (0x40), // 0: no sample 1: sample, report Y channel
     CONV_Z1 = (0x20), // 0: no sample 1: sample, report Z1 channel
     CONV_Z2 = (0x10), // 0: no sample 1: sample, report Z2 channel
-    CONV_Z = (0x30), // 0: no sample 1: sample, report Z1 and Z2 channel
     CONV_AUX = (0x08), // 0: no sample 1: sample, report AUX channel
 };
 
@@ -146,6 +150,7 @@ class SX8650IWLTRT {
 
 public:
     volatile struct coordinates _raw_coordinates;
+    volatile struct pressures _pressures;
     volatile struct coefficient _coefficient;
     volatile struct coordinates _coordinates;
 
@@ -174,12 +179,31 @@ public:
 
     /** Attach a callback to interrupt
      *
-     * Callback is executed in interrupt modes (\p InterruptReadOutMode and \p
-     * WakeUpOperationMode).
+     * Callback is executed in interrupt mode
      *
      * \param function callback to execute on interrupt
      */
-    void attach(Callback<void(uint16_t, uint16_t)> function);
+    void attach_coordinates_measurement(Callback<void(uint16_t, uint16_t)> function);
+
+    /** Attach a callback to interrupt
+     *
+     * Callback is executed in interrupt mode
+     *
+     * \param function callback to execute on interrupt
+     */
+    void attach_pressures_measurement(Callback<void(uint16_t, uint16_t)> function);
+
+    /*! Set the SX8650IWLTRT RegChanMsk to read coordinates
+     *
+     *
+     */
+    void enable_coordinates_measurement();
+
+    /*! Set the SX8650IWLTRT RegChanMsk to read pressures
+     *
+     *
+     */
+    void enable_pressures_measurement();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -256,18 +280,6 @@ public:
      * \return width uint16_t
      */
     uint16_t width();
-
-    /*! Set the SX8650IWLTRT RegCtrlMsk config
-     *
-     * \param value RegChanMskAddress Address to be applied
-     */
-    void set_reg_chan_msk(RegChanMskAddress value);
-
-    /*! Get the SX8650IWLTRT RegChanMsk config
-     *
-     * \return mask
-     */
-    RegChanMskAddress reg_chan_msk();
 
 private:
     /*! Set register value
@@ -383,22 +395,36 @@ private:
      */
     Time setdly();
 
+    /*! Set the SX8650IWLTRT RegCtrlMsk config
+     *
+     * \param value RegChanMskAddress Address to be applied
+     */
+    void set_reg_chan_msk(RegChanMskAddress value);
+
+    /*! Get the SX8650IWLTRT RegChanMsk config
+     *
+     * \return mask
+     */
+    RegChanMskAddress reg_chan_msk();
+
     /*! Set touch to true
      *
      *
      */
     void get_touch();
-    
+
     I2C _i2c;
     I2CAddress _i2cAddress;
-    Callback<void(uint16_t, uint16_t)> _user_callback;
+    Callback<void(uint16_t, uint16_t)> _user_callback_coordinates;
+    Callback<void(uint16_t, uint16_t)> _user_callback_pressures;
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
     float _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
-    CalibrationMode status_calibration;
+    CalibrationMode _status_calibration;
     uint16_t _height = 160;
     uint16_t _width = 128;
+    uint8_t _status_msk;
 };
 
 } // namespace sixtron
