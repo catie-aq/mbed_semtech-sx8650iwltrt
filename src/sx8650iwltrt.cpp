@@ -278,18 +278,18 @@ int SX8650IWLTRT::i2c_read_channel()
             return 0;
             break;
         case uint8_t(RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
-            char data1[4];
-            if (_i2c.read(static_cast<int>(_i2cAddress), data1, 4) != 0) {
+            char data1[8];
+            if (_i2c.read(static_cast<int>(_i2cAddress), data1, 8) != 0) {
                 return -2;
             }
-            _pressures.z1 = ((data1[0] & 0x0F) << 8 | data1[1]);
-            _pressures.z2 = ((data1[2] & 0x0F) << 8 | data1[3]);
+            _pressures.z1 = ((data1[4] & 0x0F) << 8 | data1[5]);
+            _pressures.z2 = ((data1[6] & 0x0F) << 8 | data1[7]);
             return 0;
             break;
         case uint8_t(RegChanMskAddress::CONV_X | RegChanMskAddress::CONV_Y
                 | RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
             char data2[8];
-            if (_i2c.read(static_cast<int>(_i2cAddress), data2, 4) != 0) {
+            if (_i2c.read(static_cast<int>(_i2cAddress), data2, 8) != 0) {
                 return -2;
             }
             _raw_coordinates.x = ((data2[0] & 0x0F) << 8 | data2[1]);
@@ -393,9 +393,12 @@ RegChanMskAddress SX8650IWLTRT::reg_chan_msk()
 void SX8650IWLTRT::get_touch()
 {
     i2c_read_channel();
+    if(_status_calibration == CalibrationMode::Activated){
+        _event_flags.set(TOUCH_DETECTED);
+    }
     switch (_status_msk) {
         case uint8_t(RegChanMskAddress::CONV_X | RegChanMskAddress::CONV_Y):
-            // if (_user_callback_coordinates) {
+            if (_user_callback_coordinates) {
                 if (_status_calibration == CalibrationMode::Deactivated) {
                     _coordinates.x = int(_coefficient.ax * _raw_coordinates.x
                             + _coefficient.bx * _raw_coordinates.y + _coefficient.x_off);
@@ -403,10 +406,8 @@ void SX8650IWLTRT::get_touch()
                             + _coefficient.by * _raw_coordinates.y + _coefficient.y_off);
 
                     _user_callback_coordinates(_coordinates.x, _coordinates.y);
-                } else {
-                    _event_flags.set(TOUCH_DETECTED);
                 }
-            //}
+            }
             break;
         case uint8_t(RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
             if (_user_callback_pressures) {
