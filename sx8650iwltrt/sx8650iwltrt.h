@@ -15,6 +15,11 @@ struct coordinates {
     uint16_t y = 0;
 };
 
+struct pressures {
+    uint16_t z1 = 0;
+    uint16_t z2 = 0;
+};
+
 struct coefficient {
     float ax = 2.00;
     float bx = 2.00;
@@ -102,11 +107,21 @@ enum Time : uint8_t {
 };
 enum RegCtrl1Address : uint8_t {
     /* sx8650 bits for RegCtrl1 */
-    CONDIRQ = (0x20), // enable conditional interrupts
+    CONDIRQ = (0x20), // interrupt generated when pen detect is successful
+    NO_CONDIRQ = (0x00), // interrupt always generated at end of conversion cycle. If no pen
+                         // is detected the data is set to ‘invalid qualified’.
     FILT_NONE = (0x00), // no averaging
     FILT_3SA = (0x01), // 3 sample averaging
     FILT_5SA = (0x02), // 5 sample averaging
     FILT_7SA = (0x03), // 7 samples, sort, then average of 3 middle samples
+};
+
+enum AuxAqc : uint8_t {
+    /* sx8650 bits for RegCtrl1 : select the pen detect resistor */
+    AUX_ANALOG = (0x00), // AUX is used as an analog input
+    AUX_RISE = (0x40), // On rising AUX edge, wait POWDLY and start acquisition
+    AUX_FALL = (0x80), // On falling AUX edge, wait POWDLY and start acquisition
+    AUX_RISE_FALL = (0xC0), // On rising and falling AUX edges, wait POWDLY and start acquisition
 };
 
 enum PenResistor : uint8_t {
@@ -135,6 +150,7 @@ class SX8650IWLTRT {
 
 public:
     volatile struct coordinates _raw_coordinates;
+    volatile struct pressures _pressures;
     volatile struct coefficient _coefficient;
     volatile struct coordinates _coordinates;
 
@@ -163,12 +179,31 @@ public:
 
     /** Attach a callback to interrupt
      *
-     * Callback is executed in interrupt modes (\p InterruptReadOutMode and \p
-     * WakeUpOperationMode).
+     * Callback is executed in interrupt mode
      *
      * \param function callback to execute on interrupt
      */
-    void attach(Callback<void(uint16_t, uint16_t)> function);
+    void attach_coordinates_measurement(Callback<void(uint16_t, uint16_t)> function);
+
+    /** Attach a callback to interrupt
+     *
+     * Callback is executed in interrupt mode
+     *
+     * \param function callback to execute on interrupt
+     */
+    void attach_pressures_measurement(Callback<void(uint16_t, uint16_t)> function);
+
+    /*! Set the SX8650IWLTRT RegChanMsk to read coordinates
+     *
+     *
+     */
+    void enable_coordinates_measurement();
+
+    /*! Set the SX8650IWLTRT RegChanMsk to read pressures
+     *
+     *
+     */
+    void enable_pressures_measurement();
 
     /*! Set the SX8650IWLTRT RegCtrl1 condirq config
      *
@@ -314,15 +349,15 @@ private:
 
     /*! Set the SX8650IWLTRT RegCtrl1 auxaqc config
      *
-     * \param value RegCtrl1Address Address to be applied
+     * \param value AuxAqc Address to be applied
      */
-    void set_auxaqc(RegCtrl1Address value);
+    void set_auxaqc(AuxAqc value);
 
     /*! Get the SX8650IWLTRT RegCtrl1 auxaqc config
      *
      * \returns auxaqc
      */
-    RegCtrl1Address auxaqc();
+    AuxAqc auxaqc();
 
     /*! Set the SX8650IWLTRT RegCtrl1 pen resistor config
      *
@@ -348,17 +383,17 @@ private:
      */
     RegCtrl1Address filt();
 
-    /*! Set the SX8650IWLTRT RegCtrl1 time of sedly config
+    /*! Set the SX8650IWLTRT RegCtrl1 time of setdly config
      *
      * \param value Powdly Address to be applied
      */
-    void set_sedly(Time value);
+    void set_setdly(Time value);
 
-    /*! Get the SX8650IWLTRT RegCtrl1 time of sedly config
+    /*! Get the SX8650IWLTRT RegCtrl1 time of setdly config
      *
-     * \return sedly
+     * \return setdly
      */
-    Time sedly();
+    Time setdly();
 
     /*! Set the SX8650IWLTRT RegCtrlMsk config
      *
@@ -378,22 +413,18 @@ private:
      */
     void get_touch();
 
-    /*! Set touch to false
-     *
-     *
-     */
-    void no_touch();
-
     I2C _i2c;
     I2CAddress _i2cAddress;
-    Callback<void(uint16_t, uint16_t)> _user_callback;
+    Callback<void(uint16_t, uint16_t)> _user_callback_coordinates;
+    Callback<void(uint16_t, uint16_t)> _user_callback_pressures;
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
     float _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
-    CalibrationMode status_calibration;
+    CalibrationMode _status_calibration;
     uint16_t _height = 160;
     uint16_t _width = 128;
+    uint8_t _status_msk;
 };
 
 } // namespace sixtron
