@@ -21,12 +21,12 @@ struct pressures {
 };
 
 struct coefficient {
-    float ax = 2.00;
-    float bx = 2.00;
-    float x_off = 2.00;
-    float ay = 2.00;
-    float by = 2.00;
-    float y_off = 2.00;
+    double ax = 2.00;
+    double bx = 2.00;
+    double x_off = 2.00;
+    double ay = 2.00;
+    double by = 2.00;
+    double y_off = 2.00;
 };
 
 enum I2CAddress {
@@ -88,22 +88,22 @@ enum Rate : uint8_t {
 enum Time : uint8_t {
     /* sx8650 power delay: The channel will be biased for a time of POWDLY before each channel
        conversion for CTRL0 register */
-    POWDLY_IMMEDIATE = (0x00), // Immediate 0,5 us
-    POWDLY_1_1US = (0x01),
-    POWDLY_2_2US = (0x02),
-    POWDLY_4_4US = (0x03),
-    POWDLY_8_9US = (0x04),
-    POWDLY_17_8US = (0x05),
-    POWDLY_35_5US = (0x06),
-    POWDLY_71US = (0x07),
-    POWDLY_140US = (0x08),
-    POWDLY_280US = (0x09),
-    POWDLY_570US = (0x0A),
-    POWDLY_1_1MS = (0x0B),
-    POWDLY_2_3MS = (0x0C),
-    POWDLY_4_6MS = (0x0D),
-    POWDLY_9MS = (0x0E),
-    POWDLY_18MS = (0x0F),
+    DLY_IMMEDIATE = (0x00), // Immediate 0,5 us
+    DLY_1_1US = (0x01),
+    DLY_2_2US = (0x02),
+    DLY_4_4US = (0x03),
+    DLY_8_9US = (0x04),
+    DLY_17_8US = (0x05),
+    DLY_35_5US = (0x06),
+    DLY_71US = (0x07),
+    DLY_140US = (0x08),
+    DLY_280US = (0x09),
+    DLY_570US = (0x0A),
+    DLY_1_1MS = (0x0B),
+    DLY_2_3MS = (0x0C),
+    DLY_4_6MS = (0x0D),
+    DLY_9MS = (0x0E),
+    DLY_18MS = (0x0F),
 };
 enum RegCtrl1Address : uint8_t {
     /* sx8650 bits for RegCtrl1 */
@@ -229,6 +229,19 @@ public:
      */
     Rate rate();
 
+    /*! Set the SX8650IWLTRT RegCtrl0 time of powdly config
+     *
+     * \param value Powdly Address to be applied
+     */
+    void set_powdly(Time value);
+
+    /*! Get the SX8650IWLTRT RegCtrl0 time of powdly config
+     *
+     * \returns powdly
+     *
+     */
+    Time powdly();
+
     /*! Get the SX8650IWLTRT RegCtrl0 rate config
      *
      * \return convirq status
@@ -255,7 +268,7 @@ public:
      * \param by
      * \param y_off
      */
-    void set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off);
+    void set_calibration(double ax, double bx, double x_off, double ay, double by, double y_off);
 
     /*! Set the height of the touchscreen
      *
@@ -334,19 +347,6 @@ private:
      */
     void convert_channel(ChannelAddress value);
 
-    /*! Set the SX8650IWLTRT RegCtrl0 time of powdly config
-     *
-     * \param value Powdly Address to be applied
-     */
-    void set_powdly(Time value);
-
-    /*! Get the SX8650IWLTRT RegCtrl0 time of powdly config
-     *
-     * \returns powdly
-     *
-     */
-    Time powdly();
-
     /*! Set the SX8650IWLTRT RegCtrl1 auxaqc config
      *
      * \param value AuxAqc Address to be applied
@@ -407,12 +407,12 @@ private:
      */
     RegChanMskAddress reg_chan_msk();
 
-    /*! Set touch to true
+    /*! Irq handler
      *
      *
      */
     void get_touch();
-
+    
     I2C _i2c;
     I2CAddress _i2cAddress;
     Callback<void(uint16_t, uint16_t)> _user_callback_coordinates;
@@ -420,7 +420,7 @@ private:
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
-    float _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
+    double _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
     CalibrationMode _status_calibration;
     uint16_t _height = 160;
     uint16_t _width = 128;

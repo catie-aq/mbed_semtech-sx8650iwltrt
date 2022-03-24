@@ -26,7 +26,7 @@ SX8650IWLTRT::SX8650IWLTRT(
         _i2c(i2c_sda, i2c_sdl),
         _i2cAddress(i2cAddress),
         _user_callback_coordinates(nullptr),
-        _user_callback_pressures(nullptr ),
+        _user_callback_pressures(nullptr),
         _event_flags(),
         _nirq(DIO5)
 {
@@ -134,7 +134,7 @@ uint16_t SX8650IWLTRT::width()
 void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 {
 
-    float xd0, xd1, xd2, yd0, yd1, yd2;
+    double xd0, xd1, xd2, yd0, yd1, yd2;
     uint16_t pointcheck[6] = { 10,
         10,
         uint16_t(_width - 20),
@@ -207,7 +207,7 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
     _status_calibration = CalibrationMode::Deactivated;
 }
 
-void SX8650IWLTRT::set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off)
+void SX8650IWLTRT::set_calibration(double ax, double bx, double x_off, double ay, double by, double y_off)
 {
 
     _coefficient.ax = ax;
@@ -393,7 +393,7 @@ RegChanMskAddress SX8650IWLTRT::reg_chan_msk()
 void SX8650IWLTRT::get_touch()
 {
     i2c_read_channel();
-    if(_status_calibration == CalibrationMode::Activated){
+    if (_status_calibration == CalibrationMode::Activated) {
         _event_flags.set(TOUCH_DETECTED);
     }
     switch (_status_msk) {
