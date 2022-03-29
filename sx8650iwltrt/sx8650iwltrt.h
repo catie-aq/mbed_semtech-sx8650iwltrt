@@ -21,12 +21,12 @@ struct pressures {
 };
 
 struct coefficient {
-    double ax = 2.00;
-    double bx = 2.00;
-    double x_off = 2.00;
-    double ay = 2.00;
-    double by = 2.00;
-    double y_off = 2.00;
+    float ax = 2.00;
+    float bx = 2.00;
+    float x_off = 2.00;
+    float ay = 2.00;
+    float by = 2.00;
+    float y_off = 2.00;
 };
 
 enum I2CAddress {
@@ -268,7 +268,7 @@ public:
      * \param by
      * \param y_off
      */
-    void set_calibration(double ax, double bx, double x_off, double ay, double by, double y_off);
+    void set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off);
 
     /*! Set the height of the touchscreen
      *
@@ -420,7 +420,7 @@ private:
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
-    double _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
+    float _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
     CalibrationMode _status_calibration;
     uint16_t _height = 160;
     uint16_t _width = 128;

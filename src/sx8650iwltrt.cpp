@@ -134,7 +134,7 @@ uint16_t SX8650IWLTRT::width()
 void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 {
 
-    double xd0, xd1, xd2, yd0, yd1, yd2;
+    float xd0, xd1, xd2, yd0, yd1, yd2;
     uint16_t pointcheck[6] = { 10,
         10,
         uint16_t(_width - 20),
@@ -207,7 +207,7 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
     _status_calibration = CalibrationMode::Deactivated;
 }
 
-void SX8650IWLTRT::set_calibration(double ax, double bx, double x_off, double ay, double by, double y_off)
+void SX8650IWLTRT::set_calibration(float ax, float bx, float x_off, float ay, float by, float y_off)
 {
 
     _coefficient.ax = ax;
