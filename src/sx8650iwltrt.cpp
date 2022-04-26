@@ -28,7 +28,16 @@ SX8650IWLTRT::SX8650IWLTRT(
         _user_callback_coordinates(nullptr),
         _user_callback_pressures(nullptr),
         _event_flags(),
-        _nirq(DIO5)
+        _nirq(DIO5),
+        _x0(0),
+        _y0(0),
+        _x1(0),
+        _y1(0),
+        _x2(0),
+        _y2(0),
+        _k(0),
+        _height(160),
+        _width(128)
 {
     _status_calibration = CalibrationMode::Deactivated;
     _nirq.fall(_event_queue->event(this, &SX8650IWLTRT::get_touch));

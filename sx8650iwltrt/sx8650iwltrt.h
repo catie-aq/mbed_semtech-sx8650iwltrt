@@ -412,7 +412,7 @@ private:
      *
      */
     void get_touch();
-    
+
     I2C _i2c;
     I2CAddress _i2cAddress;
     Callback<void(uint16_t, uint16_t)> _user_callback_coordinates;
@@ -420,10 +420,10 @@ private:
     EventQueue _event_queue;
     EventFlags _event_flags;
     InterruptIn _nirq;
-    float _x0 = 0, _y0 = 0, _x1 = 0, _y1 = 0, _x2 = 0, _y2 = 0, _k = 0;
+    float _x0, _y0, _x1, _y1, _x2, _y2, _k;
     CalibrationMode _status_calibration;
-    uint16_t _height = 160;
-    uint16_t _width = 128;
+    uint16_t _height;
+    uint16_t _width;
     uint8_t _status_msk;
 };
 
