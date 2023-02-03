@@ -5,30 +5,19 @@
 
 #include "sx8650iwltrt.h"
 
-/* sx8650 commands */
-#define SX8650_SELECT_CH 0x80 // Select Channel Register : Select and bias a channel
-#define SX8650_CONVERT_CH                                                                          \
-    0x90 // Convert Channel Register : Select and bias a channel Wait for the programmed settling
-         // time (POWDLY) Start conversion
-#define SX8650_RESET 0xDE // value to reset software
-
-/* bits for I2C_REG_STAT */
-#define STATUS_CONVIRQ 0x80 // I2C_REG_STAT: end of conversion flag
-#define STATUS_PENIRQ 0x40 // I2C_REG_STAT: pen detected
-
-/* Event Flag for calibrate */
-#define TOUCH_DETECTED (1UL << 0)
-
 namespace sixtron {
 
-SX8650IWLTRT::SX8650IWLTRT(
-        PinName i2c_sda, PinName i2c_sdl, EventQueue *_event_queue, I2CAddress i2cAddress):
-        _i2c(i2c_sda, i2c_sdl),
+SX8650IWLTRT::SX8650IWLTRT(I2C *i2c,
+        PinName irq,
+        EventQueue *event_queue,
+        uint16_t width,
+        uint16_t height,
+        SX8650IWLTRT::I2CAddress i2cAddress):
         _i2cAddress(i2cAddress),
         _user_callback_coordinates(nullptr),
         _user_callback_pressures(nullptr),
         _event_flags(),
-        _nirq(DIO5),
+        _nirq(irq),
         _x0(0),
         _y0(0),
         _x1(0),
@@ -36,11 +25,18 @@ SX8650IWLTRT::SX8650IWLTRT(
         _x2(0),
         _y2(0),
         _k(0),
-        _height(160),
-        _width(128)
+        _width(width),
+        _height(height)
 {
+    _i2c = i2c;
     _status_calibration = CalibrationMode::Deactivated;
-    _nirq.fall(_event_queue->event(this, &SX8650IWLTRT::get_touch));
+    _nirq.fall(event_queue->event(this, &SX8650IWLTRT::get_touch));
+}
+
+SX8650IWLTRT::SX8650IWLTRT(
+        I2C *i2c, PinName irq, EventQueue *event_queue, SX8650IWLTRT::I2CAddress i2cAddress):
+        SX8650IWLTRT::SX8650IWLTRT(i2c, irq, event_queue, 128, 160, i2cAddress)
+{
 }
 
 /* PUBLIC */
@@ -84,7 +80,7 @@ void SX8650IWLTRT::set_rate(Rate value)
     i2c_set_register(RegisterAddress::I2CRegCtrl0, static_cast<char>(value) | tmp);
 }
 
-Rate SX8650IWLTRT::rate()
+SX8650IWLTRT::Rate SX8650IWLTRT::rate()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl0, &data);
@@ -98,7 +94,7 @@ void SX8650IWLTRT::set_condirq(RegCtrl1Address value)
     i2c_set_register(RegisterAddress::I2CRegCtrl1, static_cast<char>(value) | (tmp & 0xDF));
 }
 
-RegCtrl1Address SX8650IWLTRT::condirq()
+SX8650IWLTRT::RegCtrl1Address SX8650IWLTRT::condirq()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl1, &data);
@@ -140,6 +136,14 @@ uint16_t SX8650IWLTRT::width()
     return _width;
 }
 
+bool SX8650IWLTRT::check_accuracy(uint8_t x, uint8_t y)
+{
+    return ((x + VALUE_ACCURACY_X(_width) > _coordinates.a
+                    && _coordinates.a > x - VALUE_ACCURACY_X(_width))
+            && (y + VALUE_ACCURACY_Y(_height) > _coordinates.b
+                    && _coordinates.b > y - VALUE_ACCURACY_Y(_height)));
+}
+
 void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 {
 
@@ -157,7 +161,6 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
     yd0 = pointcheck[1];
     yd1 = pointcheck[3];
     yd2 = pointcheck[5];
-
     set_filt(FILT_5SA);
 
     /* Draw points on the screen */
@@ -170,34 +173,34 @@ void SX8650IWLTRT::calibrate(Callback<void(int, int)> func)
 
     /* Touch detected */
 
-    _x0 = _raw_coordinates.x;
-    _y0 = _raw_coordinates.y;
+    _x0 = _raw_coordinates.a;
+    _y0 = _raw_coordinates.b;
 
     /* Draw points on the screen */
 
     func(pointcheck[2], pointcheck[3]);
 
-    while (abs(_x0 - _raw_coordinates.x) < 500 && (abs(_y0 - _raw_coordinates.y) < 500)) {
+    while (abs(_x0 - _raw_coordinates.a) < 500 && (abs(_y0 - _raw_coordinates.b) < 500)) {
         _event_flags.wait_any(TOUCH_DETECTED);
     }
 
     /* Touch detected */
 
-    _x1 = _raw_coordinates.x;
-    _y1 = _raw_coordinates.y;
+    _x1 = _raw_coordinates.a;
+    _y1 = _raw_coordinates.b;
 
     /* Draw points on the screen */
 
     func(pointcheck[4], pointcheck[5]);
 
-    while (abs((_x1 - _raw_coordinates.x) < 500) && (abs(_y1 - _raw_coordinates.y) < 500)) {
+    while (abs((_x1 - _raw_coordinates.a) < 500) && (abs(_y1 - _raw_coordinates.b) < 500)) {
         _event_flags.wait_any(TOUCH_DETECTED);
     }
 
     /* Touch detected */
 
-    _x2 = _raw_coordinates.x;
-    _y2 = _raw_coordinates.y;
+    _x2 = _raw_coordinates.a;
+    _y2 = _raw_coordinates.b;
 
     /* Calculate coefficient */
 
@@ -227,6 +230,11 @@ void SX8650IWLTRT::set_calibration(float ax, float bx, float x_off, float ay, fl
     _coefficient.y_off = y_off;
 }
 
+SX8650IWLTRT::coefficient SX8650IWLTRT::get_calibration()
+{
+    return _coefficient;
+}
+
 /* PRIVATE */
 
 void SX8650IWLTRT::select_channel(ChannelAddress value)
@@ -246,7 +254,7 @@ int SX8650IWLTRT::i2c_set_register(RegisterAddress registerAddress, char value)
     char data[2];
     data[0] = static_cast<char>(registerAddress);
     data[1] = value;
-    if (_i2c.write(static_cast<int>(_i2cAddress), data, 2) != 0) {
+    if (_i2c->write(static_cast<int>(_i2cAddress), data, 2) != 0) {
         return -1;
     }
     return 0;
@@ -255,10 +263,10 @@ int SX8650IWLTRT::i2c_set_register(RegisterAddress registerAddress, char value)
 int SX8650IWLTRT::i2c_read_register(RegisterAddress registerAddress, char *value)
 {
     char data = static_cast<char>(0x40 | registerAddress);
-    if (_i2c.write(static_cast<int>(_i2cAddress), &data, 1, true) != 0) {
+    if (_i2c->write(static_cast<int>(_i2cAddress), &data, 1, true) != 0) {
         return -1;
     }
-    if (_i2c.read(static_cast<int>(_i2cAddress), value, 1) != 0) {
+    if (_i2c->read(static_cast<int>(_i2cAddress), value, 1) != 0) {
         return -2;
     }
     return 0;
@@ -268,7 +276,7 @@ int SX8650IWLTRT::i2c_write_command(char writecommand)
 {
     char data = static_cast<char>(writecommand);
 
-    if (_i2c.write(static_cast<int>(_i2cAddress), &data, 1) != 0) {
+    if (_i2c->write(static_cast<int>(_i2cAddress), &data, 1) != 0) {
         return -1;
     }
     return 0;
@@ -279,32 +287,32 @@ int SX8650IWLTRT::i2c_read_channel()
     switch (_status_msk) {
         case uint8_t(RegChanMskAddress::CONV_X | RegChanMskAddress::CONV_Y):
             char data[4];
-            if (_i2c.read(static_cast<int>(_i2cAddress), data, 4) != 0) {
+            if (_i2c->read(static_cast<int>(_i2cAddress), data, 4) != 0) {
                 return -2;
             }
-            _raw_coordinates.x = ((data[0] & 0x0F) << 8 | data[1]);
-            _raw_coordinates.y = ((data[2] & 0x0F) << 8 | data[3]);
+            _raw_coordinates.a = ((data[0] & 0x0F) << 8 | data[1]);
+            _raw_coordinates.b = ((data[2] & 0x0F) << 8 | data[3]);
             return 0;
             break;
         case uint8_t(RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
             char data1[8];
-            if (_i2c.read(static_cast<int>(_i2cAddress), data1, 8) != 0) {
+            if (_i2c->read(static_cast<int>(_i2cAddress), data1, 8) != 0) {
                 return -2;
             }
-            _pressures.z1 = ((data1[4] & 0x0F) << 8 | data1[5]);
-            _pressures.z2 = ((data1[6] & 0x0F) << 8 | data1[7]);
+            _pressures.a = ((data1[4] & 0x0F) << 8 | data1[5]);
+            _pressures.b = ((data1[6] & 0x0F) << 8 | data1[7]);
             return 0;
             break;
         case uint8_t(RegChanMskAddress::CONV_X | RegChanMskAddress::CONV_Y
                 | RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
             char data2[8];
-            if (_i2c.read(static_cast<int>(_i2cAddress), data2, 8) != 0) {
+            if (_i2c->read(static_cast<int>(_i2cAddress), data2, 8) != 0) {
                 return -2;
             }
-            _raw_coordinates.x = ((data2[0] & 0x0F) << 8 | data2[1]);
-            _raw_coordinates.y = ((data2[2] & 0x0F) << 8 | data2[3]);
-            _pressures.z1 = ((data2[4] & 0x0F) << 8 | data2[5]);
-            _pressures.z2 = ((data2[6] & 0x0F) << 8 | data2[7]);
+            _raw_coordinates.a = ((data2[0] & 0x0F) << 8 | data2[1]);
+            _raw_coordinates.b = ((data2[2] & 0x0F) << 8 | data2[3]);
+            _pressures.a = ((data2[4] & 0x0F) << 8 | data2[5]);
+            _pressures.b = ((data2[6] & 0x0F) << 8 | data2[7]);
             return 0;
     }
     return 0;
@@ -317,7 +325,7 @@ void SX8650IWLTRT::set_powdly(Time value)
     i2c_set_register(RegisterAddress::I2CRegCtrl0, static_cast<char>(value) | tmp);
 }
 
-Time SX8650IWLTRT::powdly()
+SX8650IWLTRT::Time SX8650IWLTRT::powdly()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl0, &data);
@@ -332,7 +340,7 @@ void SX8650IWLTRT::set_auxaqc(AuxAqc value)
     i2c_set_register(RegisterAddress::I2CRegCtrl1, static_cast<char>(value) | (tmp & 0x3F));
 }
 
-AuxAqc SX8650IWLTRT::auxaqc()
+SX8650IWLTRT::AuxAqc SX8650IWLTRT::auxaqc()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl1, &data);
@@ -347,7 +355,7 @@ void SX8650IWLTRT::set_pen_resistor(PenResistor value)
     i2c_set_register(RegisterAddress::I2CRegCtrl1, static_cast<char>(value) | tmp);
 }
 
-PenResistor SX8650IWLTRT::pen_resistor()
+SX8650IWLTRT::PenResistor SX8650IWLTRT::pen_resistor()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl1, &data);
@@ -362,7 +370,7 @@ void SX8650IWLTRT::set_filt(RegCtrl1Address value)
     i2c_set_register(RegisterAddress::I2CRegCtrl1, static_cast<char>(value) | tmp);
 }
 
-RegCtrl1Address SX8650IWLTRT::filt()
+SX8650IWLTRT::RegCtrl1Address SX8650IWLTRT::filt()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl1, &data);
@@ -377,7 +385,7 @@ void SX8650IWLTRT::set_setdly(Time value)
     i2c_set_register(RegisterAddress::I2CRegCtrl2, static_cast<char>(value) | tmp);
 }
 
-Time SX8650IWLTRT::setdly()
+SX8650IWLTRT::Time SX8650IWLTRT::setdly()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegCtrl2, &data);
@@ -392,7 +400,7 @@ void SX8650IWLTRT::set_reg_chan_msk(RegChanMskAddress value)
     i2c_set_register(RegisterAddress::I2CRegChanMsk, static_cast<char>(value) | tmp);
 }
 
-RegChanMskAddress SX8650IWLTRT::reg_chan_msk()
+SX8650IWLTRT::RegChanMskAddress SX8650IWLTRT::reg_chan_msk()
 {
     char data;
     i2c_read_register(RegisterAddress::I2CRegChanMsk, &data);
@@ -407,35 +415,33 @@ void SX8650IWLTRT::get_touch()
     }
     switch (_status_msk) {
         case uint8_t(RegChanMskAddress::CONV_X | RegChanMskAddress::CONV_Y):
+            _coordinates.a = int(_coefficient.ax * _raw_coordinates.a
+                    + _coefficient.bx * _raw_coordinates.b + _coefficient.x_off);
+            _coordinates.b = int(_coefficient.ay * _raw_coordinates.a
+                    + _coefficient.by * _raw_coordinates.b + _coefficient.y_off);
             if (_user_callback_coordinates) {
                 if (_status_calibration == CalibrationMode::Deactivated) {
-                    _coordinates.x = int(_coefficient.ax * _raw_coordinates.x
-                            + _coefficient.bx * _raw_coordinates.y + _coefficient.x_off);
-                    _coordinates.y = int(_coefficient.ay * _raw_coordinates.x
-                            + _coefficient.by * _raw_coordinates.y + _coefficient.y_off);
-
-                    _user_callback_coordinates(_coordinates.x, _coordinates.y);
+                    _user_callback_coordinates(_coordinates.a, _coordinates.b);
                 }
             }
             break;
         case uint8_t(RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
             if (_user_callback_pressures) {
-                _user_callback_pressures(_pressures.z1, _pressures.z2);
+                _user_callback_pressures(_pressures.a, _pressures.b);
             }
             break;
         case uint8_t(RegChanMskAddress::CONV_X | RegChanMskAddress::CONV_Y
                 | RegChanMskAddress::CONV_Z1 | RegChanMskAddress::CONV_Z2):
             if (_user_callback_pressures) {
-                _user_callback_pressures(_pressures.z1, _pressures.z2);
+                _user_callback_pressures(_pressures.a, _pressures.b);
             }
+            _coordinates.a = int(_coefficient.ax * _raw_coordinates.a
+                    + _coefficient.bx * _raw_coordinates.b + _coefficient.x_off);
+            _coordinates.b = int(_coefficient.ay * _raw_coordinates.a
+                    + _coefficient.by * _raw_coordinates.b + _coefficient.y_off);
             if (_user_callback_coordinates) {
                 if (_status_calibration == CalibrationMode::Deactivated) {
-                    _coordinates.x = int(_coefficient.ax * _raw_coordinates.x
-                            + _coefficient.bx * _raw_coordinates.y + _coefficient.x_off);
-                    _coordinates.y = int(_coefficient.ay * _raw_coordinates.x
-                            + _coefficient.by * _raw_coordinates.y + _coefficient.y_off);
-
-                    _user_callback_coordinates(_coordinates.x, _coordinates.y);
+                    _user_callback_coordinates(_coordinates.a, _coordinates.b);
                 } else {
                     _event_flags.set(TOUCH_DETECTED);
                 }
